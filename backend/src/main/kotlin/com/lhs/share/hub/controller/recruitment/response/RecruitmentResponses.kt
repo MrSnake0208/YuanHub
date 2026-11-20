@@ -30,6 +30,7 @@ data class RecruitmentSummary(
     val unknownUpGoldCount: Long? = null,
     val totalUpRate: Double? = null,
     val guaranteedGoldCount: Long? = null,
+    val earlyGoldCount: Long? = null,
     val pityHistoryAssumption: String? = null,
     val pityStatus: String? = null,
     @get:JsonInclude(JsonInclude.Include.NON_NULL) val topGoldAgents: List<RecruitmentAgentCount>? = null,

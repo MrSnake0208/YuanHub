@@ -76,6 +76,7 @@ class RecruitmentService(
                     totals.unknownCount > 0 || unknownProgress > 0,
                     fourStarCount = totals.fourStarCount,
                     averageGoldPulls = accountGoldStatistics.accountAverageGoldPulls,
+                    earlyGoldCount = accountGoldStatistics.earlyGoldCount,
                     permanentKnownTotalPulls = pools.filter { isPermanentRecruitmentPool(it.mappedSnapshot ?: it.snapshot) }.sumOf {
                         (byPool[it.poolId]?.recordedPulls ?: 0) + (byPool[it.poolId]?.batchPulls ?: 0) + (it.progress ?: 0)
                     },
@@ -106,6 +107,7 @@ class RecruitmentService(
                         },
                         count?.fourStarCount ?: 0,
                         averageGoldPulls = goldStatistics[pool.poolId]?.averageGoldPulls,
+                        earlyGoldCount = goldStatistics[pool.poolId]?.earlyGoldCount ?: 0L,
                         smallPityWinRate = goldStatistics[pool.poolId]?.smallPityWinRate,
                         topGoldAgents = agentStatistics.topPermanentAgents(pool.poolId),
                     ).withUpStatistics(listOfNotNull(upStatistics[pool.poolId]))

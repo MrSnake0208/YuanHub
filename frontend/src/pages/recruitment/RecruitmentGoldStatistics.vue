@@ -7,8 +7,7 @@
         <dd>
           <strong>{{ metric.value }}</strong>
           <small v-if="metric.unit" class="number-unit" :class="{ 'percentage-unit': metric.unit === '%' }">{{ metric.unit }}</small>
-          <p v-if="account && metric.key === 'total-up' && accountSamples" class="sample-note"><span v-for="sample in accountSamples" :key="sample">{{ sample }}</span></p>
-          <p v-else-if="metric.note">{{ metric.note }}</p>
+          <p v-if="metric.note && !(account && metric.key === 'total-up' && accountSamples)">{{ metric.note }}</p>
         </dd>
       </div>
     </dl>
@@ -63,9 +62,6 @@ summary:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); ou
 .account-statistics dd { margin-top: 4px; }
 .account-statistics strong { color: var(--theme-strong-text, var(--tea)); font-size: 24px; line-height: 1.25; }
 .account-statistics p { color: var(--ink-60); font-size: 11px; line-height: 1.5; }
-.account-statistics .sample-note { display: flex; flex-wrap: wrap; gap: 0 4px; }
-.sample-note span { white-space: nowrap; }
-.sample-note span + span::before { content: '/'; margin-right: 4px; }
 @container (min-width: 900px) {
   .account-statistics .gold-metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }

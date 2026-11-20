@@ -41,6 +41,8 @@ summary=`{known_total_pulls,recorded_pulls,batch_pulls,known_progress,event_coun
 
 全局 `summary.average_gold_pulls` 按相同有效样本口径汇总当前账号所有卡池，仅在最终均值四舍五入保留两位小数，不平均已舍入的各池均值；不包含 baseline。前端固定显示两位小数（如 `26.33`、`12.00`）；卡池均值仍保留一位小数。无有效样本为 null。`summary.small_pity_win_rate` 仍为 null，不跨池推演保底。
 
+`summary.early_gold_count` 与 `pool_summaries[pool_id].early_gold_count` 按平均出金的样本口径，统计已知 `pull_span` 为 1–30（含端点）的未删除五星条数。账号级汇总所有卡池（含常驻、自选），池级统计本池。字段始终为整数，无符合条件的记录时为 0，`not_applicable` 的卡池也照常计数。旧后端未提供该字段时显示「—」。
+
 `summary` 与 `pool_summaries[pool_id]` 另提供以下尾部可空字段，不改变持久化或交换协议：
 
 | 字段 | 含义 |

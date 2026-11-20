@@ -3,6 +3,8 @@ package com.lhs.share.hub.service.recruitment
 import com.lhs.share.hub.repository.RecruitmentStatisticEvent
 import kotlin.math.roundToLong
 
+private const val EARLY_GOLD_MAX_PULLS = 30L
+
 /**
  * One accumulator per pool; input follows stored oldest-to-newest order, first gold assumes small pity.
  * Pity counts only provable outcomes: an UP right after a non-UP is guaranteed gold; the gold after an UP
@@ -23,6 +25,8 @@ internal class RecruitmentGoldStatistics {
     var knownUpGoldCount = 0L
         private set
     var unknownUpGoldCount = 0L
+        private set
+    var earlyGoldCount = 0L
         private set
 
     val totalUpRate: Double?
@@ -45,6 +49,7 @@ internal class RecruitmentGoldStatistics {
         if (event.rarity == 5 && event.pullSpan != null && event.pullSpan > 0) {
             knownPulls += event.pullSpan
             knownCount++
+            if (event.pullSpan <= EARLY_GOLD_MAX_PULLS) earlyGoldCount++
         }
         // UP attribution counts every gold regardless of pity state.
         if (event.rarity == 5) {
