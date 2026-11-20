@@ -12,12 +12,10 @@
         </span>
         <span v-if="view === 'agents'" class="preview-agent-details" aria-hidden="true">
           <span class="agent-pull-badge" :class="recordBarClass(row.event.pull_span, row.fourStar)">{{ row.pulls }}</span>
-          <span v-if="row.event.batch_id" class="preview-batch">批次</span>
         </span>
         <span v-else class="preview-track" aria-hidden="true">
           <span class="record-bar" :class="recordBarClass(row.event.pull_span, row.fourStar)" :style="{ width: recordSpanWidth(row.event.pull_span, row.fourStar) }">{{ row.pulls }}</span>
           <span v-if="row.event.up_status === 'non_up'" class="non-up-stamp">歪</span>
-          <span v-if="row.event.batch_id" class="preview-batch">批次</span>
         </span>
       </li>
     </ol>
@@ -54,7 +52,7 @@ const rows = computed(() => {
     const fourStar = Number(event.agent_snapshot.rarity ?? agent.rarity) === 4
     const goldRank = fourStar ? null : ++rank
     const pulls = fourStar ? '4星计次' : event.pull_span == null ? '未知' : `${event.pull_span}抽`
-    const label = `${agent.name}，${fourStar ? '4星计次，不影响保底' : event.pull_span == null ? '抽数未知' : pulls}，${event.up_status === 'non_up' ? '非UP' : event.up_status === 'up' ? 'UP' : 'UP状态未知'}${event.batch_id ? '，批次记录' : ''}${goldRank ? `，本池已记录第${goldRank}个金` : ''}`
+    const label = `${agent.name}，${fourStar ? '4星计次，不影响保底' : event.pull_span == null ? '抽数未知' : pulls}，${event.up_status === 'non_up' ? '非UP' : event.up_status === 'up' ? 'UP' : 'UP状态未知'}${goldRank ? `，本池已记录第${goldRank}个金` : ''}`
     return { event, agent, fourStar, rank: goldRank, pulls, label, avatar: agent.avatar || agent.avatar_url || resolveOperatorPortrait(agent.operator_id || agent.id, agent) }
   }).reverse()
 })
@@ -79,7 +77,6 @@ ol { list-style: none; margin: 0; padding: 0; }
 .preview-portrait .non-up-stamp { position: absolute; right: -5px; top: -5px; background: var(--surface); }
 .preview-agent-details { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: -10px; max-width: 100%; }
 .agent-pull-badge { padding: 3px 8px 4px; font: 700 13px/1.2 var(--font-d); white-space: nowrap; }
-.preview-batch { border: 1px solid var(--line); border-radius: 999px; padding: 3px 6px; color: var(--ink-60); font-size: 10px; flex: none; }
 .preview-progress .preview-record { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .preview-progress .preview-portrait { width: 40px; height: 40px; }
 .preview-track { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; }

@@ -698,7 +698,6 @@ it('旧批次日期/备注/UP状态保持，新UP仍提交固定槽身份', asyn
   const event = { ...recruitmentEvent('old', 17), agent_snapshot: { agent_id: 'a', name: '甲' }, batch_id: 'batch', up_status: 'non_up', acquired_date: '2024-01-01', note: '旧备注' }
   const wrapper = render({ records: [event], catalog: [{ pool_id: 'catalog-a', up_agents: [{ id: 'slot', name: '占位', active: true }] }] })
   await wrapper.get('.gacha-record .record-detail').trigger('click')
-  expect(wrapper.text()).toContain('不会改变批次总抽数')
   await wrapper.get('.pull-count-field input').setValue('19')
   await wrapper.get('.composer-actions .primary').trigger('click')
   await register(wrapper, 'slot', '')

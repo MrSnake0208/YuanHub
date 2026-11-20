@@ -149,7 +149,7 @@ h2 { margin-top: 4px; font: 900 23px/1.4 var(--font-s); letter-spacing: .04em; }
 .pull-result { display: flex; align-items: baseline; gap: 5px; min-width: 0; white-space: nowrap; }
 .pull-result b { font: 700 20px/1 var(--font-d); }
 .pull-result small { font-size: 12px; font-weight: 700; }
-.status-pill, .pending-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; min-height: 24px; padding: 1px 6px; font-size: 10px; font-weight: 800; line-height: 1; }
+.pending-mark { display: inline-flex; flex: none; align-items: center; justify-content: center; min-height: 24px; padding: 1px 6px; font-size: 10px; font-weight: 800; line-height: 1; }
 .non-up-stamp { display: grid; flex: none; width: 30px; height: 30px; place-items: center; font: 800 17px/1 var(--font-s); transform: rotate(-12deg); }
 .saved-mark { font-size: 11px; }
 .gacha-record.is-sortable, .gacha-record.is-sortable .record-detail { -webkit-touch-callout: none; }
@@ -161,7 +161,6 @@ h2 { margin-top: 4px; font: 900 23px/1.4 var(--font-s); letter-spacing: .04em; }
 .agent-pull-badge { padding: 4px 8px; font: 700 13px/1.2 var(--font-d); white-space: nowrap; }
 .agent-non-up { position: absolute; top: -6px; right: -6px; z-index: 2; }
 .agent-record-detail { display: grid; justify-items: center; gap: 4px; width: 100%; min-width: 0; padding: 6px 3px; }
-.agent-record-flags { display: flex; justify-content: center; flex-wrap: wrap; gap: 3px; }
 .agent-record-flag { font-size: 11px; }
 .agent-record-flag.is-pending { padding: 2px 5px; }
 .records-empty { padding: 28px 16px; text-align: center; }

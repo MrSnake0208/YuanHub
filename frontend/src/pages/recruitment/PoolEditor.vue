@@ -285,7 +285,7 @@
               </div>
               </div>
               <p v-if="entryError" :id="editorId + '-entry-error'" class="form-error" role="alert">{{ entryError }}</p>
-              <p v-if="activeRow?.batch_id" class="composer-note">批次记录：修改本条不会改变批次总抽数。</p>
+              <p v-if="activeRow?.batch_id" class="composer-note">修改这条记录的出货间隔不会改变总抽数。</p>
               <p v-if="tailProgress == null" class="unknown-progress-note">保底选填，留空保留原进度。</p>
             </section>
 
@@ -333,7 +333,6 @@
                         <span class="pull-result"><b>{{ isFourStar(row) ? '计次' : row.pull_span === '' ? '未知' : row.pull_span }}</b><small>{{ isFourStar(row) ? '4星' : row.pull_span === '' ? '抽数' : '抽' }}</small></span>
                       </span>
                       <span v-if="row.up_status === 'non_up'" class="non-up-stamp" aria-hidden="true">歪</span>
-                      <span v-if="row.batch_id" class="status-pill is-neutral">批次</span>
                       <span v-if="isChanged(row)" class="pending-mark">待保存</span>
                       <span v-else-if="isSavedRow(row) && !screenshotMode" class="saved-mark">本笔已保存</span>
                     </span>
@@ -363,11 +362,8 @@
                     @click="edit(row, $event)"
                   >
                     <span class="agent-pull-badge" :class="barClass(row)" aria-hidden="true">{{ isFourStar(row) ? '4星计次' : row.pull_span === '' ? '未知' : row.pull_span + '抽' }}</span>
-                    <span class="agent-record-flags" aria-hidden="true">
-                      <span v-if="row.batch_id" class="agent-record-flag">批次</span>
-                      <span v-if="isChanged(row)" class="agent-record-flag is-pending">待保存</span>
-                      <span v-else-if="isSavedRow(row) && !screenshotMode" class="agent-record-flag">本笔已保存</span>
-                    </span>
+                    <span v-if="isChanged(row)" class="agent-record-flag is-pending" aria-hidden="true">待保存</span>
+                    <span v-else-if="isSavedRow(row) && !screenshotMode" class="agent-record-flag" aria-hidden="true">本笔已保存</span>
                   </button>
                 </li>
               </ol>
@@ -385,7 +381,7 @@
             </section>
 
             <p v-if="orderChanged" class="change-note" role="status">历史顺序待保存；两种视图使用同一顺序，抽数与保底不随移动变化。</p>
-            <p v-if="deletedIds.length" class="change-note">保存后将移除 {{ deletedIds.length }} 条已有出货，并扣除这些记录的已知抽数；批次记录同步扣减批次计数，相邻记录与当前垫抽不变。</p>
+            <p v-if="deletedIds.length" class="change-note">保存后将移除 {{ deletedIds.length }} 条已有出货，并从总抽数中扣除这些记录的已知抽数。相邻记录与当前垫抽不变。</p>
 
           </div>
 
@@ -789,7 +785,7 @@ function recordLabel(row) {
   const pulls = isFourStar(row) ? '4星计次，不影响保底' : row.pull_span === '' ? '抽数未知' : row.pull_span + '抽出货'
   const status = row.up_status === 'non_up' ? '，非UP' : (row.up_status === 'up' || agent?.poolSlot && (!poolDefinition.value.allow_custom_up || !originals.has(row.event_id))) ? '，UP' : ''
   const rank = goldOrder.value.get(row.event_id)
-  return (screenshotMode.value ? '' : '编辑') + (agent?.name || row.agent_id) + '，' + pulls + status + (row.batch_id ? '，批次记录' : '') + (rank ? `，本池已记录第${rank}个金` : '')
+  return (screenshotMode.value ? '' : '编辑') + (agent?.name || row.agent_id) + '，' + pulls + status + (rank ? `，本池已记录第${rank}个金` : '')
 }
 const recordPendingCount = computed(() => rows.value.filter(row => isChanged(row)).length + deletedIds.value.length + (orderChanged.value ? 1 : 0))
 const pendingCount = computed(() => recordPendingCount.value + (remaining.value !== initialRemaining.value ? 1 : 0) + (wishesChanged.value ? 1 : 0) + (cumulativeChoiceChanged.value ? 1 : 0))
@@ -1225,9 +1221,7 @@ async function submit() {
 .record-detail { border: 0; border-radius: 7px; background: transparent; }
 .record-detail:not(:disabled):hover { background: transparent; }
 .pull-result small { color: color-mix(in srgb, var(--on-surface) 88%, transparent); }
-.status-pill, .pending-mark { border-radius: 999px; }
-.status-pill { border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line)); color: var(--theme-accent-text, var(--accent-strong)); }
-.status-pill.is-neutral { border-color: var(--line); color: var(--ink-60); }
+.pending-mark { border-radius: 999px; }
 .pending-mark { background: var(--yellow); color: var(--theme-strong-text, var(--tea)); }
 .saved-mark { color: var(--editor-green); }
 .gacha-record.is-sortable, .gacha-record.is-sortable .record-detail { cursor: grab; user-select: none; }

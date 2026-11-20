@@ -149,13 +149,13 @@ it('不可用账号、非本账号池、忙碌时不读取，切账号后排队�
   expect(listRecruitmentEvents).toHaveBeenCalledTimes(2); m.stop()
 })
 
-it('只读两视图保持新到旧、5星序号、4星计次、批次、非UP及未知标记', async () => {
+it('只读两视图保持新到旧、5星序号、4星计次、非UP及未知标记', async () => {
   const items = [event('first', 39), event('four', null, 4), { ...event('latest', null), up_status: 'non_up', batch_id: 'batch' }]
   const original = structuredClone(items)
   const wrapper = mount(RecruitmentRecordsPreview, { props: { pool: pool('a'), entry: entry(items) } })
   expect(wrapper.findAll('.preview-record').map(item => item.attributes('data-event-id'))).toEqual(['latest', 'four', 'first'])
   expect(wrapper.findAll('.agent-order-badge').map(item => item.text())).toEqual(['2', '1'])
-  expect(wrapper.text()).toContain('4星计次'); expect(wrapper.text()).toContain('未知'); expect(wrapper.text()).toContain('批次')
+  expect(wrapper.text()).toContain('4星计次'); expect(wrapper.text()).toContain('未知')
   expect(wrapper.findAll('button, input, select')).toHaveLength(0)
   expect(wrapper.get('.preview-record').attributes('aria-label')).toContain('非UP')
   await wrapper.setProps({ view: 'progress' })
