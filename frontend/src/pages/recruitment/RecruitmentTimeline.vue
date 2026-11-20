@@ -177,7 +177,7 @@ const regularsByPool = computed(() => {
   }
   return regulars
 })
-const summaryAgents = pool => regularsByPool.value.get(pool.pool_id) || coverAgents(pool)
+const summaryAgents = pool => regularsByPool.value.get(pool.pool_id) || coverAgents(pool).filter(agent => agent.rarity !== 4)
 function cardLabel(pool) {
   const agents = summaryAgents(pool)
   const { enabled, name, pool_type } = details(pool)
