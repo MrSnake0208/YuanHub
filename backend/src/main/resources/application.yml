@@ -106,6 +106,7 @@ share:
     dir: ${SHARE_AVATAR_DIR:./data/avatar}
   portrait:
     dir: ${SHARE_PORTRAIT_DIR:./data/portraits}
+    normalizer-dir: ${SHARE_PORTRAIT_NORMALIZER_DIR:../frontend/scripts/portraits}
   xinzhi:
     dir: ${SHARE_XINZHI_DIR:./data/xinzhi}
   media:

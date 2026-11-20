@@ -226,6 +226,8 @@ class OperatorCatalogService(
         return AdminOperatorCatalogResponse.of(repository.save(existing.copy(xinzhi = null, xinzhiSha256 = null)))
     }
 
+    fun previewPortrait(file: MultipartFile): ByteArray = portraitStorage.preview(file)
+
     fun setPortrait(operatorId: String, file: MultipartFile): AdminOperatorCatalogResponse {
         ensureSeeded()
         val existing = repository.findByOperatorId(operatorId)

@@ -230,6 +230,13 @@ pitest {
     )
 }
 
+tasks.processResources {
+    from(rootProject.file("../frontend/scripts/portraits")) {
+        include("normalize.py", "config.json", "requirements.txt", "references/*.webp")
+        into("portrait-normalizer")
+    }
+}
+
 gitProperties {
     if (file("../.git").exists()) {
         val actualGitDir = providers.exec {

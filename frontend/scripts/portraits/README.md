@@ -113,3 +113,5 @@ scripts/portraits/.venv/bin/python scripts/portraits/update.py --debug
 处理成功后，sidecar 与原图一起归档。累计 metadata 按输出文件名记录目录 ID、人脸框、置信度、scale、x/y 平移、最终裁切、原图/成品哈希、是否人工标注、实际羽化宽度、警告和归档位置。
 
 `normalize.py` 是几何处理核心，也可独立用于指定输入、输出目录的批处理；日常更新正式资源使用 `update.py`，无需维护旧实验 manifest 或逐角色 CSS。
+
+后台密探编辑器也复用同一脚本、配置和参考图。选中原始透明 PNG 后，后端用 `normalize.py --single-png INPUT OUTPUT` 生成预览，管理员确认后保存预览中的 PNG。后台处理使用临时文件，批量入口仍负责更新静态 WebP 和前端索引。相关接口和运行环境见[后端 README 的密探立绘说明](../../../backend/README.md)。

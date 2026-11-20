@@ -142,7 +142,10 @@ data class ShareProperties(
 
     data class Xinzhi(var dir: String = "./data/xinzhi")
 
-    data class Portrait(var dir: String = "./data/portraits")
+    data class Portrait(
+        var dir: String = "./data/portraits",
+        var normalizerDir: String = "../frontend/scripts/portraits",
+    )
 
     /**
      * 媒体文件上传配置

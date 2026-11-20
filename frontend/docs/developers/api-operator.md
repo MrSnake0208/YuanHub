@@ -37,6 +37,8 @@ curl --fail-with-body -H "Authorization: Bearer $OPENAPI_TOKEN" \
 
 `GET /v1/operator/catalog` 无需 Token。当前 HTTP 响应使用 `ApiResult` 包装，密探列表位于 `data.operators` 数组，按每项 `id` / `name` 为当前档案补充名称；目录加载失败或 ID 未找到时保留原始 ID。当前目录 DTO 的列表字段是 `operators`，不要将旧交换规范示例中的 `entries` 直接当作 HTTP 目录字段，也不要与 `/open-api/operator/current` 的 `data[].entries` 映射混淆。
 
+管理编辑器用 `POST /v1/admin/operator-catalog/portrait/preview` 生成透明 PNG，再通过 `PUT /v1/admin/operator-catalog/{operatorId}/portrait` 保存确认过的文件。两个接口均需 JWT 和 `operator_catalog:write`，multipart 字段为 `file`。预览响应为 `image/png`，错误和运行环境见[后端 README 的密探立绘说明](../../../backend/README.md)。
+
 ## Token 自动采集
 
 | 方法与路径 | Scope | 请求 | 成功 data |

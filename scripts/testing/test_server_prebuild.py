@@ -15,6 +15,7 @@ import tempfile
 import tarfile
 import time
 import unittest
+from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[2]
 PROXY = r'''
@@ -48,6 +49,13 @@ elif name == 'javac':
     print('javac 21.0.1')
 elif name == 'node':
     print('22')
+elif name == 'python3':
+    if args[:2] != ['-m', 'venv']:
+        os.execv(sys.executable, [sys.executable, *args])
+    interpreter = pathlib.Path(args[2]) / 'bin' / 'python'
+    interpreter.parent.mkdir(parents=True)
+    interpreter.write_text('#!/bin/sh\nexit 0\n')
+    interpreter.chmod(0o755)
 elif name in ('gradlew', 'npm'):
     if os.environ.get('BUILD_FAIL'):
         sys.exit(9)
@@ -102,7 +110,7 @@ class ServerPrebuildTest(unittest.TestCase):
         for key in list(self.env):
             if key.startswith('GIT_') and key not in {'GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM', 'GIT_TERMINAL_PROMPT'}:
                 del self.env[key]
-        for name in ('sudo', 'systemctl', 'nginx', 'sleep', 'java', 'javac', 'node', 'npm', 'curl', 'sha256sum', 'mv', 'setsid', 'flock'):
+        for name in ('sudo', 'systemctl', 'nginx', 'sleep', 'java', 'javac', 'node', 'npm', 'curl', 'sha256sum', 'mv', 'setsid', 'flock', 'python3'):
             self.proxy(self.bin / name)
         self.env['PATH'] = str(self.bin) + os.pathsep + self.env['PATH']
         self.source = self.root / 'server/.monorepo-source'
@@ -120,7 +128,11 @@ class ServerPrebuildTest(unittest.TestCase):
         self.server = self.source.parent
         self.addCleanup(self.stop_pending_drain)
         self.ci_jar = self.root / 'ci-app.jar'
-        self.ci_jar.write_bytes(b'fixture jar')
+        with ZipFile(self.ci_jar, 'w') as jar:
+            prefix = 'BOOT-INF/classes/portrait-normalizer/'
+            jar.writestr(prefix + 'config.json', '{"references":[]}')
+            jar.writestr(prefix + 'normalize.py', '')
+            jar.writestr(prefix + 'requirements.txt', '')
         self.env['PREBUILT_JAR'] = str(self.ci_jar)
         self.env.update(BACKEND_ROOT=str(self.server), FRONTEND_ROOT=str(self.server),
                         RELEASE_COMMIT=self.sha, KEEP_RELEASES='0', PRODUCT_VERSION='0.0.1-beta.20',

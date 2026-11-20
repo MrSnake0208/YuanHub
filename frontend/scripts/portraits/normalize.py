@@ -21,6 +21,7 @@ from PIL import Image, ImageDraw, ImageOps
 MODEL_URL = ("https://huggingface.co/deepghs/anime_face_detection/resolve/"
              "main/face_detect_v1.4_s/model.onnx")
 MODEL_SHA256 = "403b5bc93b6ff789b7d183418df4a1364049bac00c24acd927604a7ff6891483"
+FACE_UNRECOGNIZED = 10
 HERE = Path(__file__).resolve().parent
 PAPER = "#FFF8EC"
 INK = "#493B2C"
@@ -210,6 +211,9 @@ def bottom_crop(image, config, override):
 
 
 def geometry(face, target, size, crop, head, config):
+    l, t, r, b = face
+    if l < crop[0] or t < crop[1] or r > crop[2] or b > crop[3]:
+        raise ValueError("Source crop would remove part of the face")
     w, h = size
     cx, cy = center(face)
     x, y = target["center_x"] * w, target["center_y"] * h
@@ -284,6 +288,20 @@ def render(image, crop, transform, size, feather):
     alpha = np.asarray(mapped.getchannel("A"), dtype=float)
     mapped.putalpha(Image.fromarray(np.uint8(np.rint(alpha * mask[None, :]))))
     return mapped
+
+
+def single_png(source, destination, config, detector, calibration):
+    image = load_image(source)
+    face = resolve_face(image, {}, detector, config["detector"])
+    if face["issue"]:
+        print(face["issue"], file=sys.stderr)
+        return FACE_UNRECOGNIZED
+    crop, _, _ = bottom_crop(image, config["bottom_trim"], {})
+    size = output_size(config)
+    transform = geometry(face["bbox"], calibration["target_canvas"], size, crop, None, config["safety"])
+    output = render(image, crop, transform, size, config["feather"])
+    encode(output, destination, {"format": "png"})
+    return 0
 
 
 def cross(draw, xy, color):
@@ -479,8 +497,6 @@ def batch(args, config, detector, overrides, calibration):
                 record.update(status="needs_review", warnings=warnings+[face["issue"]])
             else:
                 b = face["bbox"]
-                if b[0] < crop[0] or b[1] < crop[1] or b[2] > crop[2] or b[3] > crop[3]:
-                    raise ValueError("Source crop would remove part of the face")
                 head = box(override["head_bbox"], image.size, "head_bbox") if "head_bbox" in override else None
                 record["head_bbox"] = head
                 transform = geometry(b, target, size, crop, head, config["safety"])
@@ -596,6 +612,7 @@ def main():
     parser.add_argument("--only", nargs="+")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--calibrate-only", type=Path, metavar="JSON")
+    parser.add_argument("--single-png", type=Path, nargs=2, metavar=("INPUT", "OUTPUT"))
     args = parser.parse_args()
     if args.fetch_model:
         destination, url, checksum = args.model, MODEL_URL, MODEL_SHA256
@@ -617,6 +634,9 @@ def main():
     overrides = read_json(args.overrides) if args.overrides else {"images": {}, "references": {}}
     detector = Detector(args.model, config["detector"])
     calibration = calibrate(config, args.config.resolve().parent, detector, overrides)
+    if args.single_png:
+        source, destination = args.single_png
+        return single_png(source, destination, config, detector, calibration)
     if args.calibrate_only:
         write_json(args.calibrate_only, calibration)
         return 0

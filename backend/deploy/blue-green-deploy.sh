@@ -174,7 +174,27 @@ if [ "$reuse_release" -ne 1 ]; then
     echo "Refusing to replace existing release: $RELEASE_DIR" >&2; exit 1;
   }
   stage_dir="$(mktemp -d "$RELEASES_DIR/.$RELEASE_VERSION.XXXXXXXX")"
+  trap 'rm -rf -- "$stage_dir"' EXIT
   cp "$PREBUILT_JAR" "$stage_dir/app.jar"
+  portrait_dir="$stage_dir/portrait-normalizer"
+  python3 - "$stage_dir/app.jar" "$portrait_dir" <<'PY'
+import json
+import sys
+from pathlib import Path
+from zipfile import ZipFile
+
+with ZipFile(sys.argv[1]) as jar:
+    prefix = "BOOT-INF/classes/portrait-normalizer/"
+    files = ["normalize.py", "config.json", "requirements.txt"]
+    files.extend(ref["path"] for ref in json.loads(jar.read(prefix + "config.json"))["references"])
+    for name in files:
+        target = Path(sys.argv[2]) / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(jar.read(prefix + name))
+PY
+  python3 -m venv "$portrait_dir/.venv"
+  "$portrait_dir/.venv/bin/python" -m pip install --disable-pip-version-check --only-binary=:all: -r "$portrait_dir/requirements.txt"
+  "$portrait_dir/.venv/bin/python" -B "$portrait_dir/normalize.py" --fetch-model
   python3 - "$stage_dir/deploy-meta.json" "$RELEASE_VERSION" "$RELEASE_COMMIT" <<'PY'
 import json, sys
 from datetime import datetime, timezone
@@ -190,6 +210,7 @@ with open(path, "w", encoding="utf-8") as fh:
 PY
   mv -T -n "$stage_dir" "$RELEASE_DIR"
   [ ! -d "$stage_dir" ] || { echo "Release appeared concurrently: $RELEASE_DIR" >&2; exit 1; }
+  trap - EXIT
   echo "Installed CI jar: $RELEASE_DIR"
 fi
 
@@ -208,6 +229,7 @@ SERVER_PORT=$target_port
 MANAGEMENT_SERVER_PORT=$target_management_port
 MANAGEMENT_SERVER_ADDRESS=127.0.0.1
 YUANHUB_JAR=$RELEASE_DIR/app.jar
+SHARE_PORTRAIT_NORMALIZER_DIR=$RELEASE_DIR/portrait-normalizer
 YUANHUB_BACKEND_VERSION=$RELEASE_VERSION
 YUANHUB_PRODUCT_VERSION=$PRODUCT_VERSION
 LOGGING_FILE_NAME=$BACKEND_ROOT/logs/$target_slot.log

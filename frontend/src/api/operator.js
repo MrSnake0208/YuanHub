@@ -393,9 +393,18 @@ export function deleteXinzhi(operatorId) {
   })
 }
 
-export function uploadOperatorPortrait(operatorId, file) {
+export async function previewOperatorPortrait(file) {
   const form = new FormData()
   form.append('file', file)
+  const { blob } = await request(ADMIN_PATH + '/portrait/preview', {
+    method: 'POST', auth: true, multipart: true, body: form, responseType: 'blob', timeoutMs: 30000
+  })
+  return blob
+}
+
+export function uploadOperatorPortrait(operatorId, file) {
+  const form = new FormData()
+  form.append('file', file, 'portrait.png')
   return request(ADMIN_PATH + '/' + encodeURIComponent(operatorId) + '/portrait', {
     method: 'PUT', auth: true, multipart: true, body: form
   })

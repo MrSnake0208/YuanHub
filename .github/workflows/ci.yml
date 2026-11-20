@@ -50,6 +50,10 @@ jobs:
               for path in subprocess.check_output(args).split(b'\0'):
                   frontend |= path.startswith(b'frontend/') or path == b'.github/workflows/ci.yml'
                   backend |= path.startswith(b'backend/') or path == b'.github/workflows/ci.yml'
+                  backend |= path.startswith(b'frontend/scripts/portraits/references/') or path in {
+                      b'frontend/scripts/portraits/normalize.py', b'frontend/scripts/portraits/config.json',
+                      b'frontend/scripts/portraits/requirements.txt',
+                  }
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write(f'frontend={str(frontend).lower()}\nbackend={str(backend).lower()}\n')
 

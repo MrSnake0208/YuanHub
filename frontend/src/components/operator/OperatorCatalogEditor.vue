@@ -43,15 +43,15 @@
             </div>
           </figure>
           <figure v-if="portraitPreview">
-            <figcaption>待上传 · {{ portraitDimensions }} · 尚未生效</figcaption>
+            <figcaption>{{ portraitUsesOriginal ? '待上传原图' : '自动处理预览' }} · {{ portraitDimensions }} · 尚未生效</figcaption>
             <div class="editor-portrait-cover"><img :src="portraitPreview" alt="待上传立绘封面预览" /></div>
             <div class="avatar-actions">
-              <button class="btn primary mini" type="button" @click="uploadPortrait">确认上传</button>
+              <button class="btn primary mini" type="button" @click="uploadPortrait">{{ portraitUsesOriginal ? '上传原图' : '确认上传' }}</button>
               <button class="editor-text-button" type="button" @click="discardPortrait">取消选图</button>
             </div>
           </figure>
         </div>
-        <p class="hint">透明 PNG，≤2MB；宽和高均为 300–2048px。按时间线封面比例预览，居中偏上；原图不裁剪、不缩放、不转码。上传后立即生效。</p>
+        <p class="hint">选择不超过 2MB 的透明 PNG，宽高各 300–2048px。系统会自动对齐人物并淡出两侧，确认上传后生效。</p>
         <p v-if="portraitNotice" class="avatar-notice" :class="{ err: portraitNoticeError }" :role="portraitNoticeError ? 'alert' : 'status'">{{ portraitNotice }}</p>
       </section>
       <section id="catalog-基础" class="editor-row">
@@ -233,7 +233,7 @@
 import { ref, computed, nextTick, onBeforeUnmount, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import { Plus, Trash2, ArrowLeft, Check, ChevronDown } from '@lucide/vue'
-import { createAdminOperatorCatalog, updateAdminOperatorCatalog, deleteAdminOperatorCatalog, uploadAdminOperatorAvatar, deleteAdminOperatorAvatar, uploadXinzhi, deleteXinzhi, uploadOperatorPortrait, deleteOperatorPortrait } from '../../api/operator.js'
+import { createAdminOperatorCatalog, updateAdminOperatorCatalog, deleteAdminOperatorCatalog, uploadAdminOperatorAvatar, deleteAdminOperatorAvatar, uploadXinzhi, deleteXinzhi, previewOperatorPortrait, uploadOperatorPortrait, deleteOperatorPortrait } from '../../api/operator.js'
 import { xinzhiUrl } from '../../api/request.js'
 import { resolveOperatorPortrait } from '../../utils/operatorPortrait.js'
 import { dialog } from '../../utils/dialog.js'
@@ -303,6 +303,7 @@ const portraitPanel = ref(null)
 const portraitFile = ref(null)
 const portraitPreview = ref('')
 const portraitDimensions = ref('')
+const portraitUsesOriginal = ref(false)
 const portraitNotice = ref('')
 const portraitNoticeError = ref(false)
 const failedPortraitSrc = ref('')
@@ -566,8 +567,6 @@ async function resetEditor() {
   xinzhiNoticeError.value = false
   failedXinzhiSrc.value = ''
   discardPortrait()
-  portraitNotice.value = ''
-  portraitNoticeError.value = false
   failedPortraitSrc.value = ''
   specialOddityError.value = ''
   expandedAliases.value = new Set()
@@ -887,6 +886,9 @@ function discardPortrait() {
   portraitPreview.value = ''
   portraitFile.value = null
   portraitDimensions.value = ''
+  portraitUsesOriginal.value = false
+  portraitNotice.value = ''
+  portraitNoticeError.value = false
 }
 
 function applyPortrait(saved) {
@@ -901,7 +903,7 @@ async function onPortraitPick(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
   if (!file || busy.value || checkingLeave.value || isNew.value) return
-  portraitNotice.value = ''
+  portraitNotice.value = '正在处理立绘…'
   portraitNoticeError.value = false
   portraitUploading.value = true
   let preview = ''
@@ -909,32 +911,36 @@ async function onPortraitPick(event) {
     if ((file.type && file.type !== 'image/png') || !/\.png$/i.test(file.name) || file.size > 2 * 1024 * 1024) {
       throw new Error('请选择不超过 2MB 的透明 PNG，宽和高均为 300–2048px')
     }
-    const header = new Uint8Array(await file.slice(0, 24).arrayBuffer())
-    if (header.length < 24 || ![137, 80, 78, 71, 13, 10, 26, 10].every((byte, i) => header[i] === byte)) {
-      throw new Error('文件不是有效的 PNG 图片')
+    let prepared
+    try {
+      prepared = await previewOperatorPortrait(file)
+    } catch (err) {
+      if (err?.code !== 'portrait_face_unrecognized') throw err
+      prepared = file
     }
-    const view = new DataView(header.buffer)
-    const width = view.getUint32(16), height = view.getUint32(20)
-    if (width < 300 || height < 300 || width > 2048 || height > 2048) {
-      throw new Error('立绘宽和高均须为 300–2048px')
-    }
-    preview = URL.createObjectURL(file)
+    if (disposed) return
+    preview = URL.createObjectURL(prepared)
+    const image = new Image()
     await new Promise((resolve, reject) => {
-      const image = new Image()
       image.onload = resolve
-      image.onerror = () => reject(new Error('图片无法读取，请选择有效的透明 PNG'))
+      image.onerror = () => reject(new Error('无法显示立绘预览，请重新选图重试'))
       image.src = preview
     })
     if (disposed) return
     discardPortrait()
-    portraitFile.value = file
+    portraitFile.value = prepared
     portraitPreview.value = preview
     preview = ''
-    portraitDimensions.value = width + '×' + height + 'px'
+    portraitDimensions.value = image.naturalWidth + '×' + image.naturalHeight + 'px'
+    portraitUsesOriginal.value = prepared === file
+    portraitNotice.value = portraitUsesOriginal.value ? '未能识别出单张清晰的人脸。你可以上传原图或重新选图。' : ''
     await nextTick()
     portraitPanel.value?.scrollIntoView({ block: 'nearest' })
   } catch (err) {
-    portraitNotice.value = humanErr(err, '立绘读取失败')
+    if (disposed || await leaveIfForbidden(err)) return
+    portraitNotice.value = err?.code === 'schema_validation_failed'
+      ? '请选择有效的透明 PNG，文件不超过 2 MB，宽高各 300–2048px。'
+      : humanErr(err, '立绘预览失败')
     portraitNoticeError.value = true
   } finally {
     if (preview) URL.revokeObjectURL(preview)

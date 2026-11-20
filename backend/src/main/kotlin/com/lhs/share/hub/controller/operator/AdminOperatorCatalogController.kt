@@ -14,8 +14,10 @@ import com.lhs.share.hub.service.operator.OperatorCatalogService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
+import org.springframework.http.CacheControl
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -135,6 +137,15 @@ class AdminOperatorCatalogController(
     fun deleteXinzhi(@PathVariable operatorId: String): ApiResult<AdminOperatorCatalogResponse> {
         requireAdmin()
         return success(catalogService.clearXinzhi(operatorId))
+    }
+
+    @Operation(summary = "管理员预览自动处理后的密探立绘")
+    @OperatorAdminResponses
+    @PostMapping("/portrait/preview", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE], produces = [MediaType.IMAGE_PNG_VALUE])
+    fun previewPortrait(@RequestPart file: MultipartFile): ResponseEntity<ByteArray> {
+        requireAdmin()
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.IMAGE_PNG)
+            .body(catalogService.previewPortrait(file))
     }
 
     @Operation(summary = "管理员上传密探立绘（透明 PNG，≤2MB，宽高各 300–2048px）")

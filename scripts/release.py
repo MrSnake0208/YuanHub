@@ -69,7 +69,13 @@ def changed(component, baseline, sha):
     command('git', 'merge-base', '--is-ancestor', base, sha)
     paths = command('git', 'diff', '--name-only', '--no-renames', base, sha, '--').splitlines()
     selected = [p for p in paths if p.startswith(component + '/') or
-                not p.startswith(('frontend/', 'backend/', 'docs/'))]
+                not p.startswith(('frontend/', 'backend/', 'docs/')) or
+                (component == 'backend' and (
+                    p.startswith('frontend/scripts/portraits/references/') or p in {
+                        'frontend/scripts/portraits/normalize.py', 'frontend/scripts/portraits/config.json',
+                        'frontend/scripts/portraits/requirements.txt',
+                    }
+                ))]
     return selected
 
 
