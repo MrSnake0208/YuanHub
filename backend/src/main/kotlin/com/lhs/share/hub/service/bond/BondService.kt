@@ -121,8 +121,13 @@ class BondService(
     fun update(userId: String, accountId: String, expectedRevision: Long, catalogVersion: String, changes: List<Pair<String, Boolean>>) =
         update(userId, accountId, expectedRevision, catalogVersion, changes, battle = false)
 
-    fun updateBattle(userId: String, accountId: String, expectedRevision: Long, catalogVersion: String, changes: List<Pair<String, Boolean>>) =
-        update(userId, accountId, expectedRevision, catalogVersion, changes, battle = true)
+    fun updateBattle(
+        userId: String,
+        accountId: String,
+        expectedRevision: Long,
+        catalogVersion: String,
+        changes: List<Pair<String, Boolean>>,
+    ) = update(userId, accountId, expectedRevision, catalogVersion, changes, battle = true)
 
     private fun update(
         userId: String,
@@ -131,25 +136,24 @@ class BondService(
         catalogVersion: String,
         changes: List<Pair<String, Boolean>>,
         battle: Boolean,
-    ): BondArchiveResponse =
-        write {
-            if (changes.size !in 1..50 || changes.map { it.first }.distinct().size != changes.size) invalid("批量须为1–50条不同羁绊")
-            val owner = account(userId, accountId)
-            val current = load(owner)
-            val data = checked(current, expectedRevision, catalogVersion)
-            val next = if (battle) {
-                changes.forEach { (id, _) -> if (id !in BattleBondCatalog.ids) invalid("目录不存在该战斗羁绊：$id") }
-                current.copy(battleRecords = BondRules.apply(current.battleRecords, changes, "manual", now()))
-            } else {
-                val entries = data.entries.associateBy { it.bondId }
-                changes.forEach { (id, triggered) ->
-                    val entry = entries[id] ?: invalid("当前游戏不存在该羁绊：$id")
-                    if (triggered && entry.status != "active") invalid("历史条目仅可保留或取消，不能手动新增触发")
-                }
-                current.copy(records = BondRules.apply(current.records, changes, "manual", now()))
+    ): BondArchiveResponse = write {
+        if (changes.size !in 1..50 || changes.map { it.first }.distinct().size != changes.size) invalid("批量须为1–50条不同羁绊")
+        val owner = account(userId, accountId)
+        val current = load(owner)
+        val data = checked(current, expectedRevision, catalogVersion)
+        val next = if (battle) {
+            changes.forEach { (id, _) -> if (id !in BattleBondCatalog.ids) invalid("目录不存在该战斗羁绊：$id") }
+            current.copy(battleRecords = BondRules.apply(current.battleRecords, changes, "manual", now()))
+        } else {
+            val entries = data.entries.associateBy { it.bondId }
+            changes.forEach { (id, triggered) ->
+                val entry = entries[id] ?: invalid("当前游戏不存在该羁绊：$id")
+                if (triggered && entry.status != "active") invalid("历史条目仅可保留或取消，不能手动新增触发")
             }
-            persist(owner, current, data, next)
+            current.copy(records = BondRules.apply(current.records, changes, "manual", now()))
         }
+        persist(owner, current, data, next)
+    }
 
     fun preview(userId: String, request: BondImportRequest): BondPreview {
         val owner = account(userId, request.accountId)
@@ -260,7 +264,8 @@ class BondService(
 
     private fun nativeRows(owner: SubAccount, document: JsonNode): List<ImportRow> {
         BondRules.fields(
-            document, setOf("format", "schema_version", "game", "catalog_version", "exported_at", "source_account", "records", "battle_records"),
+            document,
+            setOf("format", "schema_version", "game", "catalog_version", "exported_at", "source_account", "records", "battle_records"),
         )
         if (document.path("format").asText() != "yuanhub-bonds" || !document.path("schema_version").isIntegralNumber ||
             !document.path("schema_version").canConvertToInt() || document.path("schema_version").asInt() != 1

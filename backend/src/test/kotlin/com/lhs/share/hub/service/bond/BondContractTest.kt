@@ -107,7 +107,14 @@ class BondContractTest {
     fun `single and batch battle writes return the shared archive`() {
         val record = BondRecord(battleId, true, "manual", Instant.parse("2026-11-19T00:00:00Z"))
         val archive = BondArchiveResponse(
-            "a", "代号鸢", 1, "v", emptyList(), BondSummary(0, 1, 0), listOf(record), BattleBondSummary(1, 21),
+            "a",
+            "代号鸢",
+            1,
+            "v",
+            emptyList(),
+            BondSummary(0, 1, 0),
+            listOf(record),
+            BattleBondSummary(1, 21),
         )
         val secondId = "battle:char_029_xiuqiu+char_030_feiyun:combo"
         val changes = listOf(battleId to false, secondId to true)
