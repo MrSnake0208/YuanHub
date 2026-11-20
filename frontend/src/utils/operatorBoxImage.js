@@ -31,6 +31,8 @@ export function operatorBoxImageEntry(entry, catalog = {}, combat = {}, status) 
     prof: Array.isArray(entry.prof) ? entry.prof[0] : entry.prof,
     job: subProfList(entry)[0] || '',
     avatar: catalog.avatar || '',
+    portrait: catalog.portrait || '',
+    portraitSha256: catalog.portraitSha256 || catalog.portrait_sha256 || '',
     level: entry.level ?? '—',
     elite: entry.elite ?? '—',
     huaji: operatorHuajiDisplayLabel(entry).replace(' 星', '★'),

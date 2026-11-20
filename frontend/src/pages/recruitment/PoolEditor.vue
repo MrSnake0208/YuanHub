@@ -570,7 +570,7 @@ function chooseDailyMode(mode) { dailyMode.value = mode; viewedRecords.value = f
 function switchRecordView(view) { recordView.value = view; if (guideVisible.value && !activeRow.value && !pendingCount.value) viewedRecords.value = true }
 function reviewPulls() {
   if (!activeRow.value || activeRow.value.pull_span === '') return
-  try { entryInput(activeRow.value); pullsReviewed.value = true } catch { pullsReviewed.value = false }
+  try { rowInput(activeRow.value); pullsReviewed.value = true } catch { pullsReviewed.value = false }
 }
 function onPullInput(event) { entryError.value = ''; pullsReviewed.value = false; limitPullSpan(event) }
 function stepPullSpan(delta) {
@@ -607,10 +607,10 @@ watch(receiptVerified, verified => {
   for (const entry of props.saveReceipt.entries) {
     const event = props.records.find(event => entryMatches(event, entry))
     const row = { ...entry, up_status: event.up_status, pull_span: entry.pull_span ?? '', batch_id: event.batch_id }
-    originals.set(entry.event_id, JSON.stringify(entryInput(row)))
+    originals.set(entry.event_id, row)
     const index = rows.value.findIndex(item => item.event_id === entry.event_id)
     // UP 状态采用服务端读回值；后续用户修改的其它字段仍须保留。
-    if (index >= 0 && JSON.stringify({ ...entryInput(rows.value[index]), up_status: entry.up_status }) === JSON.stringify(entry)) rows.value.splice(index, 1, row)
+    if (index >= 0 && sameEntry({ ...rows.value[index], up_status: entry.up_status }, entry)) rows.value.splice(index, 1, row)
   }
   for (const id of props.saveReceipt.deleted_event_ids) originals.delete(id)
   deletedIds.value = deletedIds.value.filter(id => !props.saveReceipt.deleted_event_ids.includes(id))
@@ -642,7 +642,7 @@ const isFourStar = row => {
   const original = props.records.find(event => event.event_id === row.event_id && event.agent_snapshot.agent_id === row.agent_id)
   return Number(original?.agent_snapshot.rarity ?? selectedAgent(row)?.rarity) === 4
 }
-const rowInput = row => entryInput({ ...row, pull_span: isFourStar(row) ? null : row.pull_span })
+const rowInput = row => entryInput({ ...row, pull_span: isFourStar(row) ? null : row.pull_span }, originals.get(row.event_id)?.pull_span)
 const quickUpAgents = computed(() => options.value.filter(agent => agent.poolSlot))
 const shortcutAgents = computed(() => poolDefinition.value.allow_custom_up ? [0, 1].map(index => quickUpAgents.value.find(agent => (agent.operator_id || agent.id) === wishAgentIds.value[index]) || null) : quickUpAgents.value)
 const recordEntryDisabled = computed(() => dragging.value || props.busy || props.readOnly || props.recordsLoading || !!props.recordsError || !!unverifiedSave.value || !initialized.value || (!props.canRecord && (!activeRow.value || !originals.has(activeRow.value.event_id))) || (!activeRow.value && newCount.value >= 120))
@@ -779,7 +779,12 @@ const tailProgress = computed(() => Number.isInteger(Number(remaining.value)) &&
 const displayedProgress = computed(() => tailProgress.value == null ? null : progressLabel.value === '已抽' ? 40 - tailProgress.value : tailProgress.value)
 const barClass = row => recordBarClass(row.pull_span, isFourStar(row))
 const spanWidth = row => recordSpanWidth(row.pull_span, isFourStar(row))
-const isChanged = row => JSON.stringify(rowInput(row)) !== originals.get(row.event_id)
+function sameEntry(row, original) {
+  return original && row.agent_id === original.agent_id && String(row.pull_span ?? '') === String(original.pull_span ?? '') &&
+    (row.up_status || 'unknown') === (original.up_status || 'unknown') &&
+    (row.acquired_date || null) === (original.acquired_date || null) && (row.note || null) === (original.note || null)
+}
+const isChanged = row => !sameEntry(row, originals.get(row.event_id))
 function recordLabel(row) {
   const agent = selectedAgent(row)
   const pulls = isFourStar(row) ? '4星计次，不影响保底' : row.pull_span === '' ? '抽数未知' : row.pull_span + '抽出货'
@@ -795,7 +800,7 @@ function hasDraft() {
   const row = activeRow.value
   if (!row) return false
   if (!originals.has(row.event_id)) return !!(row.agent_id || row.pull_span !== '' || row.acquired_date || row.note)
-  try { return isChanged(row) } catch { return true }
+  return isChanged(row)
 }
 function updateKeyboardInset() {
   if (typeof window === 'undefined') return 0
@@ -1057,7 +1062,7 @@ watch([() => props.records, () => props.recordsRevision, () => props.open, () =>
   for (const event of props.records) {
     if (originals.has(event.event_id)) continue
     const row = { event_id: event.event_id, agent_id: event.agent_snapshot.agent_id, pull_span: event.pull_span ?? '', up_status: event.up_status, acquired_date: event.acquired_date, note: event.note, batch_id: event.batch_id }
-    originals.set(event.event_id, JSON.stringify(entryInput(row)))
+    originals.set(event.event_id, row)
     if (!rows.value.some(item => item.event_id === row.event_id)) rows.value.push(row)
   }
   initialized.value = true
@@ -1134,7 +1139,7 @@ async function submit() {
       await nextTick(); remainingInput.value?.focus({ preventScroll: true })
       return
     }
-    const entries = rows.value.map(row => {
+    const entries = rows.value.filter(isChanged).map(row => {
       const input = rowInput(row)
       if (!options.value.some(agent => agent.id === input.agent_id)) throw new Error('请选择本池 UP 或本游戏4星/5星密探')
       if (!originals.has(row.event_id)) {
@@ -1143,7 +1148,7 @@ async function submit() {
         input.up_status = selectedAgent(row)?.poolSlot ? 'up' : definition.up_status === 'verified' && definition.up_agent_ids?.length && !definition.unmapped_up_agent_names?.length ? 'non_up' : 'unknown'
       }
       return input
-    }).filter(entry => JSON.stringify(entry) !== originals.get(entry.event_id))
+    })
     if (entries.length > 120 || deletedIds.value.length > 120) throw new Error('每次最多维护120条出货，请分次保存')
     preservedProgress.value = props.pool.progress
     if (!requestId) requestId = createRecruitmentId()

@@ -10,7 +10,7 @@
       <article v-for="entry in entries" :key="entry.id" class="box-image-card" :data-prof="entry.prof" :data-operator="entry.id">
         <ExportCardFrame class="box-image-frame" />
         <picture v-if="portraits[entry.id]" class="box-image-portrait" aria-hidden="true">
-          <img :src="portraits[entry.id]" alt="" width="480" height="350" />
+          <img crossorigin="anonymous" :src="portraits[entry.id]" alt="" width="480" height="350" />
         </picture>
         <header class="box-image-card-head">
           <div class="box-image-name-tab">
@@ -62,14 +62,17 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import ExportCardFrame from '../ExportCardFrame.vue'
 import ExportStar from '../ExportStar.vue'
 import { avatarUrl } from '../../api/request.js'
 import { BOX_IMAGE_LAYOUT_WIDTH } from '../../utils/operatorBoxImage.js'
-import portraits from '../../data/operatorPortraits.json'
+import { resolveOperatorPortrait } from '../../utils/operatorPortrait.js'
 
-defineProps({ entries: { type: Array, required: true }, game: String, total: Number, start: Number, page: Number, pages: Number, generatedAt: String })
+const props = defineProps({ entries: { type: Array, required: true }, game: String, total: Number, start: Number, page: Number, pages: Number, generatedAt: String })
+const portraits = computed(() => Object.fromEntries(
+  props.entries.map(entry => [entry.id, resolveOperatorPortrait(entry.id, entry)])
+))
 const sheet = ref(null)
 const discClass = { 金: 'rarity-gold', gold: 'rarity-gold', 紫: 'rarity-purple', purple: 'rarity-purple', 蓝: 'rarity-blue', blue: 'rarity-blue' }
 const decorationUrl = name => import.meta.env.BASE_URL + 'assets/operator-box/' + name + '.webp'
