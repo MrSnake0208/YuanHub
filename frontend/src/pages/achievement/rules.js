@@ -1,4 +1,5 @@
 import { downloadJson } from '../../utils/downloadFile.js'
+import { backupFilename } from '../../utils/backupFile.js'
 
 export const STATUS_LABELS = Object.freeze({ incomplete: '未完成', completed: '已完成', abandoned: '已放弃' })
 export const completionStatus = record => record?.status === 'completed' ? 'completed' : 'incomplete'
@@ -101,8 +102,10 @@ export function readAchievementBackup(text) {
   return document
 }
 
-export function downloadAchievementBackup(document) {
-  downloadJson(document, 'YuanHub-成就档案-' + document.game + '-' + new Date().toISOString().slice(0, 10) + '.json', { pretty: false })
+export function downloadAchievementBackup(document, accountName) {
+  const filename = backupFilename('成就', accountName, document.game)
+  downloadJson(document, filename, { pretty: false })
+  return filename
 }
 
 export function rewardText(entry, legacyReward) {

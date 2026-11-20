@@ -1,5 +1,6 @@
 import { matchesOperatorSearch } from '../../utils/operatorFilters.js'
 import { downloadBlob } from '../../utils/downloadFile.js'
+import { backupFilename } from '../../utils/backupFile.js'
 
 export const ACTIONS = Object.freeze({ arson: '纵火', rumor: '传谣', poison: '下毒', undercover: '卧底', gather: '搜集', extinguish: '灭火', purify: '净水', rescue: '营救' })
 export const WEATHERS = Object.freeze({ sunny: '晴天', rain: '雨天', fog: '大雾', wind: '狂风', light_snow: '小雪', heavy_snow: '大雪', hurricane: '飓风', thunder: '雷鸣' })
@@ -89,6 +90,10 @@ export function legacySources(document) {
     })
 }
 
-export function downloadBondFile(document, label = '羁绊档案') {
-  downloadBlob(new Blob([JSON.stringify(document, null, 2)], { type: 'application/json;charset=utf-8' }), 'YuanHub-' + label + '-' + document.game + '-' + new Date().toISOString().slice(0, 10) + '.json')
+export function downloadBondFile(document, name) {
+  const filename = document.format === 'yuanhub-bonds'
+    ? backupFilename('羁绊', name, document.game)
+    : 'YuanHub-' + (name || '羁绊档案') + '-' + document.game + '-' + new Date().toISOString().slice(0, 10) + '.json'
+  downloadBlob(new Blob([JSON.stringify(document, null, 2)], { type: 'application/json;charset=utf-8' }), filename)
+  return filename
 }

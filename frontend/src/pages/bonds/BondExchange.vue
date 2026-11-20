@@ -48,12 +48,12 @@
       <button class="btn primary" type="button" :disabled="!preview || busy || !canUse || !!preview.stats.invalid || !!preview.stats.mismatched || !!preview.stats.unknown && !skipUnknown" @click="confirmFile">{{ busy ? '正在处理…' : preview ? '确认导入 ' + preview.affected + ' 条' : '确认导入' }}</button>
     </template>
     <template #export>
-      <section class="bond-exchange" aria-label="导出羁绊备份">
-        <p>完整原生备份包含当前账号的鸢报、历史条目和战斗羁绊进度，不包含登录凭据。成就人工完成状态需单独备份。</p>
-        <p v-if="busy" role="status">正在处理，请稍候…</p>
-        <p v-if="error" class="bond-error" role="alert">{{ error }}</p>
-        <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
-      </section>
+      <BackupExportPanel title="羁绊备份" contents="鸢报和战斗羁绊进度" :notice="exportNotice">
+        <template #feedback>
+          <p v-if="busy" role="status">正在处理，请稍候…</p>
+          <p v-if="error" class="bond-error" role="alert">{{ error }}</p>
+        </template>
+      </BackupExportPanel>
     </template>
     <template #export-footer><button class="btn primary" type="button" :disabled="!canUse || busy" @click="exportFile">{{ busy ? '正在处理…' : '下载备份' }}</button></template>
   </DataExchangeDialog>
@@ -64,8 +64,11 @@ import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
 import DataExchangeDialog from '../../components/DataExchangeDialog.vue'
 import ImportGuide from '../../components/ImportGuide.vue'
 import ImportMoreOptions from '../../components/ImportMoreOptions.vue'
+import { usePendingBackupRestore } from '../../utils/pendingBackupRestore.js'
 import { exportBonds, previewBonds, confirmBonds } from '../../api/bonds.js'
 import { downloadBondFile, legacySources, MAX_BYTES, readBondBackup } from './rules.js'
+import { backupDownloadNotice, unwrapFullBackup } from '../../utils/backupFile.js'
+import BackupExportPanel from '../../components/BackupExportPanel.vue'
 const props = defineProps({ open: Boolean, identity: String, accountId: String, accountName: String, game: String, revision: Number, catalogVersion: String, generation: Number, accounts: Array, canUse: Boolean })
 const emit = defineEmits(['update:open', 'busy', 'committed', 'target'])
 const tab = ref('import')
@@ -74,7 +77,8 @@ const bondImportSources = [
   { title: '本站羁绊备份', from: '在羁绊页「导入/导出」里导出的原生备份。' },
   { title: '旧版羁绊助手备份', from: '从羁绊助手导出。导入时请手动选择来源账号，如果文件里没有游戏信息，也要选择来源游戏。' },
 ]
-watch(() => props.open, open => { if (open) tab.value = 'import' })
+const exportNotice = ref('')
+watch(() => props.open, open => { if (open) tab.value = 'import'; else exportNotice.value = '' })
 const document = ref(null), filename = ref(''), sourceKey = ref(''), sourceGame = ref(''), strategy = ref('merge'), preview = ref(null), busy = ref(false), error = ref(''), notice = ref(''), skipUnknown = ref(false), itemPage = ref(0)
 const labels = { add: '新增', same: '相同／保留', conflict: '冲突', unknown: '未知', mismatched: '不匹配', invalid: '非法' }
 const sources = computed(() => legacySources(document.value))
@@ -89,17 +93,22 @@ let serial = 0, alive = true
 const token = () => ({ serial: ++serial, identity: props.identity, account: props.accountId, game: props.game, generation: props.generation })
 const matches = t => alive && t.serial === serial && t.identity === props.identity && t.account === props.accountId && t.game === props.game && t.generation === props.generation
 function setBusy(value) { busy.value = value; emit('busy', value) }
-function invalidate() { preview.value = null; skipUnknown.value = false; itemPage.value = 0; error.value = ''; notice.value = '' }
+function invalidate() { preview.value = null; skipUnknown.value = false; itemPage.value = 0; error.value = ''; notice.value = ''; exportNotice.value = '' }
 function clearFile() { serial++; invalidate(); document.value = null; filename.value = ''; sourceKey.value = ''; sourceGame.value = ''; strategy.value = 'merge' }
 watch(sourceKey, () => { sourceGame.value = source.value?.game || ''; invalidate() })
 watch([sourceGame, strategy], invalidate)
 watch(() => [props.accountId, props.game, props.revision, props.catalogVersion, props.generation], () => { serial++; invalidate(); setBusy(false) })
 watch(() => props.identity, () => { clearFile(); setBusy(false) })
-async function readFile(event) {
+function readFile(event) {
   const file = event.target.files?.[0]; event.target.value = ''
-  if (!file || busy.value) return
+  return readBackupFile(file)
+}
+async function readBackupFile(input) {
+  if (!input || busy.value) return
   clearFile(); const t = token(); setBusy(true)
   try {
+    const file = await unwrapFullBackup(input, 'bonds')
+    if (!matches(t)) return
     if (file.size > MAX_BYTES) throw new Error('文件最多8MiB。')
     const parsed = readBondBackup(await file.text())
     if (!matches(t)) return
@@ -110,15 +119,21 @@ async function readFile(event) {
   await nextTick()
   if (matches(t) && document.value) await previewFile()
 }
+usePendingBackupRestore(['bonds'], () => props.canUse && !!props.identity && !!props.accountId && !busy.value, async ({ file }, confirmOpened) => {
+  tab.value = 'import'
+  emit('update:open', true)
+  await nextTick()
+  if (props.open && confirmOpened()) await readBackupFile(file)
+})
 const body = () => ({ account_id: props.accountId, document: document.value, strategy: document.value?.format ? strategy.value : 'merge', source_account: document.value?.format ? null : sourceKey.value, source_game: document.value?.format ? null : sourceGame.value })
 async function exportFile() {
   if (!props.canUse || busy.value) return
-  const t = token(); setBusy(true); error.value = ''; notice.value = ''
+  const t = token(); setBusy(true); error.value = ''; exportNotice.value = ''
   try {
     const result = await exportBonds(t.account, t.identity)
     if (!matches(t)) return
     if (result.format !== 'yuanhub-bonds' || result.game !== t.game) throw new Error('导出游戏或格式不一致。')
-    downloadBondFile(result); notice.value = '已生成当前账号完整原生备份。'
+    exportNotice.value = backupDownloadNotice(downloadBondFile(result, props.accountName))
   } catch (e) { if (matches(t)) error.value = e.message }
   finally { if (matches(t)) setBusy(false) }
 }

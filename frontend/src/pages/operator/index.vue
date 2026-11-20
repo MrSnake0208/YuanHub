@@ -18,7 +18,7 @@
           </div>
         </template>
         <template #actions>
-          <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || importing" aria-label="导入/导出" title="导入/导出" aria-haspopup="dialog" @click="toggleImportPanel">
+          <button type="button" class="act-btn archive-toggle" :disabled="!auth.isLoggedIn || importing || exporting" aria-label="导入/导出" title="导入/导出" aria-haspopup="dialog" @click="toggleImportPanel">
             <Archive :size="15" aria-hidden="true" /><span class="archive-toggle-label">导入/导出</span>
           </button>
           <details class="tool-more">
@@ -150,7 +150,7 @@
             @share-change="operatorShare = $event"
           />
 
-          <DataExchangeDialog v-model:open="showArchive" v-model:tab="operatorExchangeTab" :account-name="currentAccountName" :game="gameFilter" :busy="importing" :before-close="beforeCloseOperatorExchange" @close="discardOperatorImport">
+          <DataExchangeDialog v-model:open="showArchive" v-model:tab="operatorExchangeTab" :account-name="currentAccountName" :game="gameFilter" :busy="importing || exporting" :before-close="beforeCloseOperatorExchange" @close="discardOperatorImport">
             <template #import><div ref="backupImportTarget"></div></template>
             <template #import-footer>
               <button v-if="organizationImportPreview" class="btn primary" type="button" :disabled="importing || !organizationReady || organizationData.revision !== organizationImportPreview.revision" @click="commitOrganizationImport">{{ importing ? '恢复中…' : '确认恢复分类' }}</button>
@@ -158,33 +158,17 @@
               <button v-else class="btn primary" type="button" :disabled="importing || !canCommitV3Import" @click="commitV3Import">{{ importing ? '保存中…' : '确认导入' }}</button>
             </template>
             <template #export>
-              <div class="operator-exchange-export">
-                <fieldset class="operator-export-options" :disabled="importing">
-                  <legend>导出内容</legend>
-                  <label class="operator-export-option" :class="{ active: operatorExportKind === 'archive' }">
-                    <input v-model="operatorExportKind" type="radio" name="operator-export-kind" value="archive">
-                    <span><strong>密探档案完整备份</strong><small>练度、状态、备注、关注和养成目标，可用于恢复</small></span>
-                  </label>
-                  <label class="operator-export-option" :class="{ active: operatorExportKind === 'organization' }">
-                    <input v-model="operatorExportKind" type="radio" name="operator-export-kind" value="organization">
-                    <span><strong>分类设置</strong><small>仅置顶、分组顺序和标签，不含密探养成</small></span>
-                  </label>
-                </fieldset>
-                <fieldset v-if="operatorExportKind === 'archive'" class="operator-export-options">
-                  <legend>导出范围</legend>
-                  <label class="operator-export-option" :class="{ active: !exportAll }">
-                    <input v-model="exportAll" type="radio" :value="false" name="operator-export-scope">
-                    <span><strong>当前账号</strong><small>{{ currentAccountName }}</small></span>
-                  </label>
-                  <label class="operator-export-option" :class="{ active: exportAll, disabled: accounts.length < 2 }">
-                    <input v-model="exportAll" type="radio" :value="true" name="operator-export-scope" :disabled="accounts.length < 2">
-                    <span><strong>全部账号</strong><small>{{ accounts.length > 1 ? accounts.length + ' 个账号' : '至少需要 2 个账号' }}</small></span>
-                  </label>
-                </fieldset>
-                <p v-else class="tip">仅导出当前账号「{{ currentAccountName }}」的已保存分类，不含编辑草稿</p>
-              </div>
+              <BackupExportPanel title="密探备份" contents="练度、状态、备注和养成目标" :notice="exportNotice">
+                <ImportMoreOptions summary="更多下载方式">
+                  <button v-if="accounts.length >= 2" class="btn ghost touch-target" type="button" :disabled="operatorExportDisabled" @click="doExport(true)">下载全部账号备份（{{ accounts.length }} 个账号）</button>
+                  <div>
+                    <button class="btn ghost touch-target" type="button" :disabled="operatorExportDisabled || !organizationReady" @click="exportOrganizationBackup">只下载分类设置</button>
+                    <small>只包含置顶、分组顺序和标签</small>
+                  </div>
+                </ImportMoreOptions>
+              </BackupExportPanel>
             </template>
-            <template #export-footer><button class="btn primary" type="button" :disabled="!auth.isLoggedIn || !accountId || importing || (operatorExportKind === 'organization' && !organizationReady)" @click="operatorExportKind === 'archive' ? doExport() : exportOrganizationBackup()">{{ operatorExportKind === 'archive' ? '下载完整备份' : '下载分类设置' }}</button></template>
+            <template #export-footer><button class="btn primary" type="button" :disabled="operatorExportDisabled" @click="doExport()">{{ importing || exporting ? '正在处理…' : '下载备份' }}</button></template>
           </DataExchangeDialog>
 
           <!-- 保持预览与回执单源：扫描复核留在页面，备份内容移入弹窗。 -->
@@ -2216,7 +2200,7 @@
                   :total-count="ownedCurrentEntries.length" :count-results="countCurrentResults" :reset-filters="emptyCurrentFilterState" />
               </template>
             </OperatorFilterDossier>
-            <OperatorRelationships ref="relationshipWorkspace" :entry-href="quickHref" :account-id="accountId" :account-name="currentAccountName" :game="gameFilter"
+            <OperatorRelationships ref="relationshipWorkspace" :entry-href="quickHref" :account-id="accountId" :account-name="currentAccount?.name" :game="gameFilter"
               :user-id="auth.userInfo?.id || ''" :logged-in="auth.isLoggedIn" :all-operators="catalogOperators.filter(op => op.games?.includes(gameFilter))"
               :operators="filteredRelationships.map(entry => ({ ...catalogMap[entry.id], id: entry.id }))" :owned-count="ownedCurrentEntries.length"
               :prof-icon="profIcon" :favorite-ids="favoriteAgentIds" :favorite-busy-ids="favoriteBusyIds" :favorite-loading="favoriteLoading" :favorite-error="favoriteError" @favorite="toggleAgentFavorite" />
@@ -3019,6 +3003,9 @@
 
 <script setup>
 import { downloadJson } from '../../utils/downloadFile.js';
+import { hasPendingBackupRestore, usePendingBackupRestore } from '../../utils/pendingBackupRestore.js';
+import { backupDownloadNotice, backupFilename, FULL_BACKUP_MAX_BYTES, unwrapFullBackup } from '../../utils/backupFile.js';
+import BackupExportPanel from '../../components/BackupExportPanel.vue';
 import { operatorHuaji, operatorHuajiMax, operatorHuajiDisplayLabel, operatorHuajiAction, operatorAwakeningSupported, operatorAwakeningUpgradeSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
 import { compareOperatorEntries } from '../../utils/operatorSort.js';
 import OperatorMilestoneDialog from '../../components/operator/OperatorMilestoneDialog.vue';
@@ -3271,6 +3258,7 @@ watch(activeTab, setActiveOperatorTab, { immediate: true, flush: "sync" });
 let operatorNavigationReady = false;
 let operatorNavigationSeq = 0;
 let operatorAccountDataReady = false;
+const operatorRestoreReady = ref(false);
 let operatorPageDisposed = false;
 const manifestSearch = ref("");
 const currentSearch = ref("");
@@ -3337,7 +3325,14 @@ const operatorImportSources = [
   { title: "分类设置备份", from: "在密探页「导入/导出」里导出的分类设置，只包含置顶、分组顺序和标签。" },
 ];
 const operatorExchangeTab = ref("import");
-const operatorExportKind = ref("archive");
+const exporting = ref(false);
+const exportNotice = ref("");
+let operatorExportSeq = 0;
+watch([showArchive, () => auth.userInfo?.id], () => {
+  operatorExportSeq += 1;
+  exporting.value = false;
+  exportNotice.value = "";
+}, { flush: "sync" });
 const backupImportTarget = ref(null);
 const backupFileInput = ref(null);
 // 仅控制页面扫描复核区，备份弹窗由 showArchive 控制。
@@ -3697,7 +3692,7 @@ const ledgerShareStatus = computed(() => {
   if (operatorShare.value?.accountId !== accountId.value) return "读取中…";
   return operatorShare.value.status;
 });
-watch(() => [accountId.value, gameFilter.value, auth.isLoggedIn], () => {
+watch(() => [accountId.value, gameFilter.value, auth.isLoggedIn, auth.userInfo?.id], () => {
   importOperationSeq += 1;
   scanReviewCurrentSeq += 1;
   scanReviewLoadSeq += 1;
@@ -3723,15 +3718,11 @@ watch(importError, async message => {
 });
 const accountsLoading = ref(false);
 const accountError = ref("");
-const exportAll = ref(false);
-const currentAccountName = computed(function () {
-  const account = accounts.value.find(function (item) {
-    return item.id === accountId.value;
-  });
-  return account ? account.name : "当前账号";
-});
+const operatorExportDisabled = computed(() => !auth.isLoggedIn || !accountId.value || importing.value || exporting.value);
+const currentAccount = computed(() => accounts.value.find(account => account.id === accountId.value));
+const currentAccountName = computed(() => currentAccount.value ? currentAccount.value.name : "当前账号");
 const canUseAutomaticPanel = computed(() => auth.isLoggedIn && hasPermission(auth.adminAccess, ADMIN_PERMISSIONS.OPERATOR_PANEL_USE));
-const currentPanelAccount = computed(() => auth.isLoggedIn ? accounts.value.find(account => account.id === accountId.value) : null);
+const currentPanelAccount = computed(() => auth.isLoggedIn ? currentAccount.value : null);
 const panelAutoFillEnabled = computed(() => canUseAutomaticPanel.value && currentPanelAccount.value?.operator_panel_auto_fill !== false);
 const panelPreferenceSaving = ref(false);
 const panelPreferenceNotice = ref("");
@@ -3807,14 +3798,13 @@ const canCommitV3Import = computed(function () {
 });
 
 async function toggleImportPanel() {
-  if (!auth.isLoggedIn || importing.value) return;
+  if (!auth.isLoggedIn || importing.value || exporting.value) return;
   const contextSeq = currentContextSeq, navigationSeq = operatorNavigationSeq, trigger = document.activeElement;
   if ((selectedScanReview.value || showImport.value) && !(await closeScanReview())) return;
-  if (importing.value || contextSeq !== currentContextSeq || navigationSeq !== operatorNavigationSeq || operatorPageDisposed) return;
+  if (importing.value || exporting.value || contextSeq !== currentContextSeq || navigationSeq !== operatorNavigationSeq || operatorPageDisposed) return;
   if (trigger?.isConnected) trigger.focus({ preventScroll: true });
   showImport.value = false;
   operatorExchangeTab.value = "import";
-  operatorExportKind.value = "archive";
   showArchive.value = true;
 }
 
@@ -8542,7 +8532,6 @@ async function loadAccounts() {
     const list = await listOperatorAccounts();
     accounts.value = Array.isArray(list) ? list : [];
     activeAccount.syncAccounts(accounts.value);
-    if (accounts.value.length < 2) exportAll.value = false;
     // 优先保留 activeAccount 记住的账号；已不存在（被删 / 换人）才回退到第一个
     const still = accounts.value.some(function (a) {
       return a.id === accountId.value;
@@ -9126,9 +9115,16 @@ async function commitOrganizationImport() {
   }
 }
 
-function exportOrganizationBackup() {
-  if (!auth.isLoggedIn || !accountId.value || !organizationReady.value) return;
-  downloadJson(operatorOrganizationBackup(organizationData.value, gameFilter.value), "密探分类-" + accountId.value + ".json");
+async function exportOrganizationBackup() {
+  if (operatorExportDisabled.value || !organizationReady.value) return;
+  exportNotice.value = "";
+  try {
+    const filename = backupFilename("密探分类", currentAccount.value?.name, gameFilter.value);
+    downloadJson(operatorOrganizationBackup(organizationData.value, gameFilter.value), filename);
+    exportNotice.value = backupDownloadNotice(filename);
+  } catch (err) {
+    await dialog.alert({ title: "导出失败", message: humanErr(err, "导出失败") });
+  }
 }
 
 async function previewV3Import() {
@@ -9394,31 +9390,47 @@ function previewBackupImport() {
   return previewV2Import();
 }
 
-function onFilePick(ev) {
-  if (importing.value) return;
-  const file = ev && ev.target && ev.target.files && ev.target.files[0];
-  if (!file) return;
+function onFilePick(event) {
+  const partKey = isOrganizationImport.value ? "operator_organization" : "operator";
+  return readBackupFile(event?.target?.files?.[0], partKey);
+}
+
+async function readBackupFile(input, partKey, guided = false) {
+  if (!input || importing.value) return;
   selectedScanReview.value = null;
   onImportTextInput();
   const contextSeq = currentContextSeq;
   const operation = importOperationSeq;
   const targetAccount = accountId.value;
-  const reader = new FileReader();
-  reader.onload = function () {
-    if (!importRequestIsCurrent(operation, contextSeq, targetAccount) || importing.value) return;
-    importText.value = String(reader.result || "");
-    importFromFile.value = true;
-    onImportTextInput();
-    if (!importText.value.trim()) {
-      importError.value = "备份文件没有内容，请重新选择。";
-      return;
-    }
-    void previewBackupImport();
-  };
-  reader.onerror = function () {
-    if (importRequestIsCurrent(operation, contextSeq, targetAccount)) importError.value = "无法读取备份文件，请重新选择。";
-  };
-  reader.readAsText(file, "utf-8");
+  const current = () => importRequestIsCurrent(operation, contextSeq, targetAccount) && !importing.value;
+  const showError = message => { if (current()) importError.value = message; };
+  try {
+    if (input.size > FULL_BACKUP_MAX_BYTES) await unwrapFullBackup(input, partKey);
+    if (!current()) return;
+    const reader = new FileReader();
+    reader.onload = async function () {
+      if (!current()) return;
+      try {
+        const text = String(reader.result || "");
+        const file = input.size > FULL_BACKUP_MAX_BYTES ? input : await unwrapFullBackup(input, partKey, { text });
+        const content = file === input ? text : await file.text();
+        if (!current()) return;
+        if ((guided || file !== input) && (JSON.parse(content)?.format === OPERATOR_ORGANIZATION_FORMAT) !== (partKey === "operator_organization")) {
+          throw new Error("备份内容与要恢复的功能不一致，请重新选择文件。");
+        }
+        importText.value = content;
+        importFromFile.value = true;
+        onImportTextInput();
+        if (!importText.value.trim()) {
+          importError.value = "备份文件没有内容，请重新选择。";
+          return;
+        }
+        void previewBackupImport();
+      } catch (error) { showError(error.message || "无法读取备份文件，请重新选择。"); }
+    };
+    reader.onerror = () => showError("无法读取备份文件，请重新选择。");
+    reader.readAsText(input, "utf-8");
+  } catch (error) { showError(error.message || "无法读取备份文件，请重新选择。"); }
 }
 
 function fillExample() {
@@ -9501,32 +9513,23 @@ async function afterImport() {
   ]);
 }
 
-async function doExport() {
-  if (!auth.isLoggedIn) {
-    goLogin();
-    return;
-  }
-  if (!accountId.value) {
-    await dialog.alert({ message: "请先创建并选择一个子账号" });
-    return;
-  }
-  const contextSeq = currentContextSeq;
+async function doExport(allAccounts = false) {
+  if (operatorExportDisabled.value || (allAccounts && accounts.value.length < 2)) return;
+  const contextSeq = currentContextSeq, exportSeq = ++operatorExportSeq;
+  const current = () => !operatorPageDisposed && showArchive.value && contextSeq === currentContextSeq && exportSeq === operatorExportSeq;
+  exporting.value = true;
+  exportNotice.value = "";
   try {
-    const opts = { version: 5 };
-    if (exportAll.value && accounts.value.length > 1) {
-      opts.scope = "all";
-    } else {
-      opts.accountId = accountId.value;
-    }
+    const opts = allAccounts ? { version: 5, scope: "all" } : { version: 5, accountId: accountId.value };
     const data = await exportOperator(opts);
-    if (contextSeq !== currentContextSeq) return;
-    downloadJson(data, "operator-full-backup-v5.json");
+    if (!current()) return;
+    const filename = backupFilename("密探", allAccounts ? "全部账号" : currentAccount.value?.name, gameFilter.value);
+    downloadJson(data, filename);
+    exportNotice.value = backupDownloadNotice(filename);
   } catch (err) {
-    if (contextSeq !== currentContextSeq) return;
-    await dialog.alert({
-      title: "导出失败",
-      message: humanErr(err, "导出失败"),
-    });
+    if (current()) await dialog.alert({ title: "导出失败", message: humanErr(err, "导出失败") });
+  } finally {
+    if (exportSeq === operatorExportSeq) exporting.value = false;
   }
 }
 
@@ -9557,6 +9560,29 @@ function goLogin() {
   location.href = "/login";
 }
 
+const canRestoreOperator = computed(() => operatorRestoreReady.value && auth.isLoggedIn && !!auth.userInfo?.id &&
+  !!currentAccount.value && !accountsLoading.value && !accountError.value && !catalogLoading.value && !catalogError.value &&
+  !loading.value && !error.value);
+watch(() => route?.query?.restore === "relationships" && hasPendingBackupRestore("relationships") &&
+  canRestoreOperator.value && canUseRelationships.value, ready => {
+  if (ready) {
+    catalogEntryExpanded.value = true;
+    void setTab("relationships");
+  }
+}, { immediate: true, flush: "post" });
+usePendingBackupRestore(["operator", "operator_organization", "relationships"], key => {
+  if (!canRestoreOperator.value || importing.value || exporting.value) return false;
+  if (key === "relationships") return canUseRelationships.value && activeTab.value === "relationships" && relationshipWorkspace.value?.ready;
+  return key !== "operator_organization" || organizationReady.value;
+}, async ({ key, file }, confirmOpened) => {
+  if (key === "relationships") {
+    await relationshipWorkspace.value?.restoreBackup(file, confirmOpened);
+    return;
+  }
+  await toggleImportPanel();
+  if (showArchive.value && confirmOpened()) await readBackupFile(file, key, true);
+});
+
 onMounted(async function () {
   syncCompactStats();
   window.addEventListener("resize", syncCompactStats);
@@ -9573,6 +9599,7 @@ onMounted(async function () {
   setTab(activeTab.value);
   unsubscribeAccountEvents = subscribeAccountEvents(handleAccountEvent);
   operatorNavigationReady = true;
+  operatorRestoreReady.value = true;
   void consumeOperatorNavigation();
 });
 
@@ -9706,16 +9733,6 @@ onBeforeUnmount(function () {
 .import-box.operator-exchange-body .import-target small { font-size: inherit; color: var(--ink-60); }
 .import-box.operator-exchange-body textarea { font-size: 14px; }
 .operator-exchange-body :is(button, input[type="file"], summary) { min-height: 44px; }
-.operator-exchange-export { min-width: 0; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
-.operator-export-options { min-width: 0; border: 0; margin: 16px 0; padding: 0; }
-.operator-export-option { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 12px; margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
-.operator-export-option.active { border-color: var(--accent); }
-.operator-export-option.disabled { opacity: .55; cursor: not-allowed; }
-.operator-export-option input { flex: none; accent-color: var(--accent); }
-.operator-export-option span { min-width: 0; }
-.operator-export-option strong, .operator-export-option small { display: block; }
-.operator-export-option small { color: var(--ink-60); }
-.operator-export-option:focus-within { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 2px; }
 .orphan-current { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }
 .operator-share-placeholder p { color: var(--ink-60); }
 

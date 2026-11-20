@@ -1,5 +1,5 @@
 <template>
-  <DataExchangeDialog :open="open" v-model:tab="tab" :account-name="accountName" :game="game" :busy="working" :before-close="beforeClose" @close="emit('close')">
+  <DataExchangeDialog :open="open || restoreOpen" v-model:tab="tab" :account-name="accountName" :game="game" :busy="working" :before-close="beforeClose" @close="closeExchange">
     <template #import>
       <div class="achievement-exchange-content">
         <div class="achievement-file-actions">
@@ -31,11 +31,11 @@
     </template>
     <template #import-footer><button class="btn primary" type="button" :disabled="!canConfirm" @click="commit">{{ working ? '正在处理…' : '确认导入' }}</button></template>
     <template #export>
-      <div class="achievement-exchange-content">
-        <p>下载当前账号完整备份（JSON）。完整备份包含历史目录记录，不受页面筛选影响，最多5000条、16MiB。</p>
-        <p v-if="tab === 'export' && error" ref="errorPanel" class="achievement-error" role="alert" tabindex="-1">{{ error }}</p>
-        <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
-      </div>
+      <BackupExportPanel title="成就备份" contents="成就完成记录" :notice="exportNotice">
+        <template #feedback>
+          <p v-if="tab === 'export' && error" ref="errorPanel" class="achievement-error" role="alert" tabindex="-1">{{ error }}</p>
+        </template>
+      </BackupExportPanel>
     </template>
     <template #export-footer><button class="btn primary" type="button" :disabled="!canRecord || working" @click="exportFile">{{ working ? '正在处理…' : '下载备份' }}</button></template>
   </DataExchangeDialog>
@@ -48,11 +48,15 @@ import ImportGuide from '../../components/ImportGuide.vue'
 import ImportMoreOptions from '../../components/ImportMoreOptions.vue'
 import * as api from '../../api/achievement.js'
 import { dialog } from '../../utils/dialog.js'
+import { usePendingBackupRestore } from '../../utils/pendingBackupRestore.js'
 import { downloadAchievementBackup, MAX_IMPORT_BYTES, readAchievementBackup } from './rules.js'
+import { backupDownloadNotice, unwrapFullBackup } from '../../utils/backupFile.js'
+import BackupExportPanel from '../../components/BackupExportPanel.vue'
 
 const props = defineProps({ open: Boolean, accountId: String, accountName: String, identity: String, game: String, revision: Number, contextVersion: Number, canRecord: Boolean })
 const emit = defineEmits(['close', 'busy', 'committed'])
-const tab = ref('import')
+const tab = ref('import'), restoreOpen = ref(false)
+const exportNotice = ref('')
 const achievementImportSources = [
   { title: '本站成就备份', from: '在成就页「导入/导出」里下载，可在其他设备或账号恢复。' },
 ]
@@ -64,9 +68,13 @@ const matches = token => alive && token.generation === generation && token.accou
 const canConfirm = computed(() => props.canRecord && !working.value && !!preview.value && !preview.value.stats.invalid && (!preview.value.stats.unknown || skipUnknown.value))
 function busy(value) { working.value = value; emit('busy', value) }
 function clearPreview() { preview.value = null; skipUnknown.value = false }
-function reset() { generation++; clearPreview(); documentData.value = null; filename.value = ''; strategy.value = 'keep_current'; error.value = ''; notice.value = ''; busy(false); if (fileInput.value) fileInput.value.value = '' }
+function reset() { generation++; restoreOpen.value = false; clearPreview(); documentData.value = null; filename.value = ''; strategy.value = 'keep_current'; error.value = ''; notice.value = ''; exportNotice.value = ''; busy(false); if (fileInput.value) fileInput.value.value = '' }
 watch(() => props.contextVersion, reset, { flush: 'sync' })
 watch(() => props.open, value => { if (!value) { reset(); tab.value = 'import' } })
+function closeExchange() {
+  if (restoreOpen.value) { reset(); tab.value = 'import' }
+  emit('close')
+}
 watch(() => props.revision, () => { if (preview.value) { clearPreview(); notice.value = '档案已变化，请重新预览。' } })
 watch(strategy, async () => { clearPreview(); if (documentData.value && !working.value) await generatePreview() })
 async function showError(message) { error.value = message; await nextTick(); errorPanel.value?.focus() }
@@ -76,22 +84,34 @@ async function beforeClose() {
   if (documentData.value && !await dialog.confirm({ title: '关闭导入预览？', message: '文件尚未导入，关闭后需要重新选择。', confirmText: '关闭预览', cancelText: '继续核对' })) return false
   return matches(token) && !working.value
 }
-async function selectFile(event) {
+function selectFile(event) {
   const file = event.target.files?.[0]
-  if (!file || !props.canRecord || working.value) return
+  event.target.value = ''
+  return readBackupFile(file)
+}
+async function readBackupFile(input) {
+  if (!input || !props.canRecord || working.value) return
   const token = capture()
   clearPreview(); error.value = ''; notice.value = ''; documentData.value = null
   busy(true)
   try {
+    const file = await unwrapFullBackup(input, 'achievement')
+    if (!matches(token)) return
     if (file.size > MAX_IMPORT_BYTES) throw new Error('文件最多16MiB。')
     const data = readAchievementBackup(await file.text())
     if (!matches(token)) return
     if (data.game !== props.game) throw new Error('备份游戏与目标账号不匹配。')
     documentData.value = data; filename.value = file.name
   } catch (failure) { if (matches(token)) await showError(failure.message) }
-  finally { if (matches(token)) { busy(false); event.target.value = '' } }
+  finally { if (matches(token)) busy(false) }
   if (matches(token) && documentData.value) await generatePreview()
 }
+usePendingBackupRestore(['achievement'], () => props.canRecord && !!props.identity && !!props.accountId && !working.value, async ({ file }, confirmOpened) => {
+  tab.value = 'import'
+  restoreOpen.value = true
+  await nextTick()
+  if (restoreOpen.value && confirmOpened()) await readBackupFile(file)
+})
 async function generatePreview() {
   if (!props.canRecord || working.value || !documentData.value) return
   const token = capture()
@@ -124,10 +144,10 @@ async function commit() {
 async function exportFile() {
   if (!props.canRecord || working.value) return
   const token = capture()
-  busy(true); error.value = ''; notice.value = ''
+  busy(true); error.value = ''; exportNotice.value = ''
   try {
     const data = await api.exportAchievements(token.accountId, token.identity)
-    if (matches(token)) { downloadAchievementBackup(data); notice.value = '已生成当前账号完整备份。' }
+    if (matches(token)) exportNotice.value = backupDownloadNotice(downloadAchievementBackup(data, props.accountName))
   } catch (failure) { if (matches(token)) await showError(failure.message || '导出失败，请重试。') }
   finally { if (matches(token)) busy(false) }
 }

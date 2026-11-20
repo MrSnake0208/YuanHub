@@ -61,11 +61,11 @@
         </template>
         <template #import-footer><button class="btn primary" type="button" :disabled="!ready || !preview?.changes" @click="restore">{{ saving ? '恢复中…' : '确认导入' }}</button></template>
         <template #export>
-          <div class="relationships relationships-exchange">
-            <p>仅备份当前账号的信赖与传闻记录，含列表之外的历史记录；与练度 JSON 分开，不包含奖励计算结果。</p>
-            <p v-if="error || localError" role="alert">{{ localError || error }}</p>
-            <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
-          </div>
+          <BackupExportPanel title="信赖与传闻备份" contents="信赖与传闻记录" :notice="exportNotice">
+            <template #feedback>
+              <p v-if="error || localError" role="alert">{{ localError || error }}</p>
+            </template>
+          </BackupExportPanel>
         </template>
         <template #export-footer><button class="btn primary" type="button" :disabled="!ready" @click="download">下载备份</button></template>
       </DataExchangeDialog>
@@ -81,6 +81,8 @@ import DataExchangeDialog from '../../components/DataExchangeDialog.vue'
 import ImportGuide from '../../components/ImportGuide.vue'
 import ImportMoreOptions from '../../components/ImportMoreOptions.vue'
 import { downloadBlob } from '../../utils/downloadFile.js'
+import { backupDownloadNotice, backupFilename, unwrapFullBackup } from '../../utils/backupFile.js'
+import BackupExportPanel from '../../components/BackupExportPanel.vue'
 import { useOperatorRelationships } from '../../composables/useOperatorRelationships.js'
 import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
 import { RELATIONSHIP_KINDS, RELATIONSHIP_BACKUP_LIMIT, relationshipOwner, relationshipTrustState, relationshipValue, parseRelationshipValue, makeRelationshipBackup, readRelationshipBackup, previewRelationshipImport } from '../../utils/operatorRelationships.js'
@@ -100,8 +102,14 @@ const backupFileInput = ref(null), importFromFile = ref(false)
 const importPasteActive = computed(() => !importFromFile.value && !!importText.value.trim())
 const resolveTrust = ref(false)
 const backupOpen = ref(false), backupTab = ref('import')
-watch(backupOpen, open => { if (open) backupTab.value = 'import' })
-async function openBackup() { if (ready.value && await beforeLeave()) backupOpen.value = true }
+const exportNotice = ref('')
+watch(backupOpen, open => { if (open) backupTab.value = 'import'; else exportNotice.value = '' })
+async function openBackup() {
+  if (!ready.value || !await beforeLeave()) return false
+  backupTab.value = 'import'
+  backupOpen.value = true
+  return true
+}
 const dirty = computed(() => !!editing.value && (resolveTrust.value || RELATIONSHIP_KINDS.some(kind => draft.value[kind] !== baseline.value[kind])))
 const hasUnsaved = computed(() => dirty.value || !!importText.value.trim() || saving.value)
 const confirmDiscard = useUnsavedChanges(hasUnsaved, '信赖与传闻草稿')
@@ -144,15 +152,28 @@ async function saveDraft() {
 }
 async function refresh() { if (await beforeLeave()) { localError.value = ''; notice.value = ''; await reload() } }
 function download() {
-  const document = makeRelationshipBackup(props.game, records.value)
-  downloadBlob(new Blob([JSON.stringify(document, null, 2)], { type: 'application/json;charset=utf-8' }), 'YuanHub-信赖与传闻-' + props.game + '.json')
+  if (!ready.value) return
+  localError.value = ''; exportNotice.value = ''
+  try {
+    const document = makeRelationshipBackup(props.game, records.value)
+    const filename = backupFilename('信赖与传闻', props.accountName, props.game)
+    downloadBlob(new Blob([JSON.stringify(document, null, 2)], { type: 'application/json;charset=utf-8' }), filename)
+    exportNotice.value = backupDownloadNotice(filename)
+  } catch (err) { localError.value = err.message }
 }
 let fileSequence = 0
-async function readFile(event) {
-  const file = event.target.files?.[0], key = scope.value.key, sequence = ++fileSequence
-  event.target.value = ''; preview.value = null; localError.value = ''
-  if (!file) return
+function readFile(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  return readBackupFile(file)
+}
+async function readBackupFile(input) {
+  const key = scope.value.key, sequence = ++fileSequence
+  preview.value = null; localError.value = ''
+  if (!input) return
   try {
+    const file = await unwrapFullBackup(input, 'relationships')
+    if (key !== scope.value.key || sequence !== fileSequence) return
     if (file.size > RELATIONSHIP_BACKUP_LIMIT) throw new Error('备份不能超过 1 MiB')
     const text = await file.text()
     if (key !== scope.value.key || sequence !== fileSequence) return
@@ -182,7 +203,10 @@ async function restore() {
 watch(() => scope.value.key, () => {
   fileSequence++; backupOpen.value = false; editing.value = ''; resolveTrust.value = false; localError.value = ''; notice.value = ''; importText.value = ''; importFromFile.value = false; preview.value = null; overwrite.value = false
 }, { flush: 'sync' })
-defineExpose({ beforeLeave, saving, openBackup, ready })
+async function restoreBackup(file, confirmOpened) {
+  if (await openBackup() && confirmOpened()) await readBackupFile(file)
+}
+defineExpose({ beforeLeave, saving, openBackup, restoreBackup, ready })
 </script>
 <style scoped src="./operatorPortraitGrid.css"></style>
 <style scoped src="./operatorRelationshipsMobile.css"></style>

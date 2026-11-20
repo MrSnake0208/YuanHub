@@ -410,8 +410,8 @@ it('JSON 区分类导出只包含当前账号已保存分类，不包含管理�
   const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
   try {
     await new DOMWrapper(document.body).get('[role="tab"][id$="-export-tab"]').trigger('click')
-    await new DOMWrapper(document.body).get('input[name="operator-export-kind"][value="organization"]').setValue(true)
-    await clickPageButton('下载分类设置')
+    new DOMWrapper(document.body).get('[role="tabpanel"][id$="-export-panel"] details').element.open = true
+    await clickPageButton('只下载分类设置')
     const text = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsText(blob) })
     expect(JSON.parse(text)).toEqual(operatorOrganizationBackup({ ...emptyOperatorOrganization(), pinned_ids: ['c'] }, '如鸢'))
     expect(api.exportOperator).not.toHaveBeenCalled(); expect(api.putOperatorOrganization).not.toHaveBeenCalled()

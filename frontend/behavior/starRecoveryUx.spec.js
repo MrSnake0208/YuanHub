@@ -956,7 +956,7 @@ it('原地改名只更新导出元数据，不重入 Host 或丢失本地草稿'
   await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
   expect(handle.setHostAccount).toHaveBeenCalledTimes(hostCalls)
   expect(click).toHaveBeenCalledTimes(1)
-  expect(click.mock.instances[0].download).toBe('YuanStar_原地改名_2026-10-06.json')
+  expect(click.mock.instances[0].download).toBe('YuanHub-星石备份-原地改名-如鸢-' + new Date().toLocaleDateString('sv-SE') + '.json')
   // jsdom Blob is not a native browser Blob; inspect serialization with FileReader.
   const blob = create.mock.calls[0][0]
   const text = await new Promise(resolve => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsText(blob) })

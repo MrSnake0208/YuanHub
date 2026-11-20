@@ -67,7 +67,7 @@
             </template>
           </RewardEntryWorkspace>
 
-          <DataExchangeDialog v-model:open="showArchive" v-model:tab="inventoryExchangeTab" :account-name="currentAccountName" :game="agentGameFilter" :busy="importing" :before-close="beforeCloseInventoryExchange" @close="discardInventoryImport">
+          <DataExchangeDialog v-model:open="showArchive" v-model:tab="inventoryExchangeTab" :account-name="currentAccountName" :game="agentGameFilter" :busy="importing || exporting" :before-close="beforeCloseInventoryExchange" @close="discardInventoryImport">
             <template #import>
               <div class="inventory-exchange-content">
                 <p class="tip inventory-import-guide">
@@ -81,6 +81,9 @@
                 <button type="button" class="btn primary file-label" :disabled="inventoryImportInputDisabled" @click="inventoryImportFile.value = ''; inventoryImportFile.click()">选择备份文件</button>
                 <input ref="inventoryImportFile" type="file" hidden accept=".json,application/json" :disabled="inventoryImportInputDisabled" @change="onFilePick" />
                 <ImportGuide :sources="inventoryImportSources" />
+                <p v-if="inventoryBackupPreview && !importResult" class="action-feedback" role="status">
+                  恢复预览：将恢复到「{{ currentAccountName }}」· {{ agentGameFilter }}，含 {{ inventoryBackupPreview.snapshots }} 份库存快照及 {{ inventoryBackupPreview.rewards }} 条奖励流水。
+                </p>
                 <p v-if="importFilename && importText.trim() && !importResult" class="tip" role="status">已读取「{{ importFilename }}」</p>
                 <p
                   v-if="importError"
@@ -124,19 +127,13 @@
             </template>
             <template #import-footer><button class="btn primary" type="button" :disabled="!auth.isLoggedIn || editingStock || inventoryImportInputDisabled || !importText.trim()" @click="doImport">{{ importing ? '导入中…' : '确认导入' }}</button></template>
             <template #export>
-              <div class="inventory-exchange-content">
-                <fieldset class="inventory-export-options" :disabled="!auth.isLoggedIn || !accountId || importing || loadingExample || drawResourceLocked">
-                  <legend>导出范围</legend>
-                  <label v-for="option in inventoryExportScopeOptions" :key="option.value" class="inventory-export-option">
-                    <input v-model="exportAll" type="radio" name="inventory-export-scope" :value="option.value === 'all'" :disabled="option.disabled">
-                    <span><strong>{{ option.label }}</strong><small>{{ option.detail }}</small></span>
-                  </label>
-                </fieldset>
-                <p class="tip">用于在不同平台之间迁移库存；备份包含当前库存及所选统计时段的奖励流水，下载前请确认账号范围。</p>
-                <p class="tip">奖励流水时段：{{ rangeFrom }} 至 {{ rangeTo }}（含结束日）。</p>
-              </div>
+              <BackupExportPanel title="库存备份" contents="库存数量和全部奖励流水" :notice="exportNotice">
+                <ImportMoreOptions v-if="accounts.length >= 2" summary="更多下载方式">
+                  <button class="btn ghost touch-target" type="button" :disabled="inventoryExportDisabled" @click="doExport(true)">下载全部账号备份（{{ accounts.length }} 个账号）</button>
+                </ImportMoreOptions>
+              </BackupExportPanel>
             </template>
-            <template #export-footer><button class="btn primary" type="button" :disabled="!auth.isLoggedIn || !accountId || importing || loadingExample || drawResourceLocked" @click="doExport">下载备份</button></template>
+            <template #export-footer><button class="btn primary" type="button" :disabled="inventoryExportDisabled" @click="doExport()">{{ importing || exporting ? '正在处理…' : '下载备份' }}</button></template>
           </DataExchangeDialog>
 
           <InventoryWorkspaceTabs
@@ -1616,6 +1613,9 @@
 <script setup>
 import { xinzhiRarity } from "../../utils/xinzhiRarity.js";
 import { downloadJson } from '../../utils/downloadFile.js';
+import { usePendingBackupRestore } from '../../utils/pendingBackupRestore.js';
+import { backupDownloadNotice, backupFilename, FULL_BACKUP_MAX_BYTES, unwrapFullBackup } from "../../utils/backupFile.js";
+import BackupExportPanel from "../../components/BackupExportPanel.vue";
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useAccountListUpdates } from '../../store/accountList.js'
 import { usePersistedTab } from "../../utils/persistedTab.js";
@@ -1878,9 +1878,12 @@ const inventoryExchangeTab = ref("import");
 const inventoryImportFile = ref(null);
 const importText = ref("");
 const importFilename = ref("");
+const inventoryBackupPreview = ref(null);
 const importPasteActive = computed(() => !importFilename.value && !!importText.value.trim());
 const importError = ref("");
 const importing = ref(false);
+const exporting = ref(false);
+const exportNotice = ref("");
 const importResult = ref(null);
 const loadingExample = ref(false);
 const readingImportFile = ref(false);
@@ -1910,9 +1913,15 @@ let inventoryExchangeSeq = 0;
 let inventoryPageReady = false;
 let inventoryDisposed = false;
 
-const inventoryExchangeDisabled = computed(() => !auth.isLoggedIn || editingStock.value || drawResourceLocked.value || importing.value);
+const inventoryExchangeDisabled = computed(() => !auth.isLoggedIn || editingStock.value || drawResourceLocked.value || importing.value || exporting.value);
 const inventoryImportInputDisabled = computed(() => importing.value || loadingExample.value || drawResourceLocked.value || readingImportFile.value);
-watch(showArchive, () => { inventoryExchangeSeq++; loadingExample.value = false; readingImportFile.value = false; }, { flush: 'sync' });
+watch(showArchive, () => {
+  inventoryExchangeSeq++;
+  loadingExample.value = false;
+  readingImportFile.value = false;
+  exporting.value = false;
+  exportNotice.value = "";
+}, { flush: 'sync' });
 watch([editingStock, drawResourceLocked], ([editing, locked]) => { if (editing || locked) showArchive.value = false; }, { flush: 'sync' });
 function openInventoryExchange() {
   if (inventoryExchangeDisabled.value) return;
@@ -1944,6 +1953,7 @@ async function followInventoryImportGuide(navigate) {
 function discardInventoryImport() {
   importText.value = "";
   importFilename.value = "";
+  inventoryBackupPreview.value = null;
   importError.value = "";
   importResult.value = null;
 }
@@ -1990,18 +2000,7 @@ const inventoryPromptDescription = computed(() => accountError.value || error.va
 const stockContext = computed(function () {
   return JSON.stringify([auth.isLoggedIn, auth.userInfo?.id || "", accountId.value, entityType.value, agentGameFilter.value]);
 });
-const exportAll = ref(false);
-const inventoryExportScopeOptions = computed(function () {
-  return [
-    { value: "current", label: "当前账号", detail: currentAccountName.value },
-    {
-      value: "all",
-      label: "全部账号",
-      detail: accounts.value.length > 1 ? accounts.value.length + " 个账号" : "至少需要 2 个账号",
-      disabled: accounts.value.length < 2,
-    },
-  ];
-});
+const inventoryExportDisabled = computed(() => !auth.isLoggedIn || !accountId.value || importing.value || exporting.value || loadingExample.value || drawResourceLocked.value);
 const currentAccountName = computed(function () {
   const account = accounts.value.find(function (item) {
     return item.id === accountId.value;
@@ -2261,7 +2260,6 @@ async function loadAccounts() {
     if (seq !== accountsLoadSeq || !auth.isLoggedIn || identity !== auth.userInfo?.id || inventoryDisposed) return;
     accounts.value = Array.isArray(list) ? list : [];
     activeAccount.syncAccounts(accounts.value);
-    if (accounts.value.length < 2) exportAll.value = false;
     // 优先保留 activeAccount 记住的账号；已不存在（被删 / 换人）才回退到第一个
     const still = accounts.value.some(function (a) {
       return a.id === accountId.value;
@@ -3889,6 +3887,12 @@ async function doImport() {
   let doc = null;
   try {
     doc = JSON.parse(importText.value);
+    const preview = inventoryBackupPreview.value;
+    if (preview) {
+      if (preview.text !== importText.value || preview.target !== accountId.value) throw new Error("备份内容或目标已变化，请重新选择文件。");
+      doc.accounts = [{ id: preview.target }];
+      doc.records = doc.records.map(record => ({ ...record, account_id: preview.target }));
+    }
     validateInventoryExchangeDocument(doc);
   } catch (err) {
     importError.value =
@@ -3901,7 +3905,9 @@ async function doImport() {
   importing.value = true;
   importResult.value = null;
   try {
-    const res = await importInventory(doc);
+    const res = inventoryBackupPreview.value
+      ? await importInventory(doc, { expectedUserId: String(auth.userInfo?.id || "") })
+      : await importInventory(doc);
     if (contextSeq !== inventoryContextSeq) return;
     importResult.value = res || {};
   } catch (err) {
@@ -3912,31 +3918,64 @@ async function doImport() {
   }
 }
 
-function onFilePick(ev) {
-  const file = ev && ev.target && ev.target.files && ev.target.files[0];
-  if (!file || inventoryImportInputDisabled.value) return;
+function onFilePick(event) {
+  return readBackupFile(event?.target?.files?.[0]);
+}
+
+async function readBackupFile(input, guided = false, sourceGame) {
+  if (!input || inventoryImportInputDisabled.value) return;
   readingImportFile.value = true;
   const contextSeq = inventoryContextSeq, exchangeSeq = inventoryExchangeSeq;
-  const reader = new FileReader();
-  reader.onload = function () {
-    if (inventoryDisposed || contextSeq !== inventoryContextSeq || exchangeSeq !== inventoryExchangeSeq || !showArchive.value) return;
+  const current = () => !inventoryDisposed && contextSeq === inventoryContextSeq && exchangeSeq === inventoryExchangeSeq && showArchive.value;
+  const showError = message => {
+    if (!current()) return;
     readingImportFile.value = false;
-    importText.value = String(reader.result || "");
-    importFilename.value = file.name;
-    importError.value = importText.value.trim() ? "" : "备份文件没有内容，请重新选择。";
-    importResult.value = null;
+    importError.value = message;
   };
-  reader.onerror = function () {
-    if (inventoryDisposed || contextSeq !== inventoryContextSeq || exchangeSeq !== inventoryExchangeSeq || !showArchive.value) return;
-    readingImportFile.value = false;
-    importError.value = "无法读取备份文件，请重新选择。";
-  };
-  reader.readAsText(file, "utf-8");
+  const game = agentGameFilter.value, target = accountId.value;
+  try {
+    if (guided && sourceGame !== game) throw new Error("备份游戏与当前账号不一致，请切换到对应游戏账号。");
+    if (input.size > FULL_BACKUP_MAX_BYTES) await unwrapFullBackup(input, "inventory");
+    if (contextSeq !== inventoryContextSeq || exchangeSeq !== inventoryExchangeSeq) return;
+    const reader = new FileReader();
+    reader.onload = async function () {
+      if (!current()) return;
+      try {
+        const raw = String(reader.result || "");
+        const file = input.size > FULL_BACKUP_MAX_BYTES ? input : await unwrapFullBackup(input, "inventory", { text: raw, game });
+        const content = file === input ? raw : await file.text();
+        if (!current()) return;
+        let preview = null;
+        if (guided || file !== input) {
+          const doc = JSON.parse(content);
+          const [source] = Array.isArray(doc?.accounts) ? doc.accounts : [];
+          if (doc?.format !== "myshare-inventory-exchange" || doc.version !== 2 ||
+              doc.accounts?.length !== 1 || typeof source?.id !== "string" || !source.id ||
+              !Array.isArray(doc.records) || !doc.records.length || doc.records.some(record => record?.account_id !== source.id)) {
+            throw new Error("这份库存备份的账号信息不完整，请重新选择。");
+          }
+          validateInventoryExchangeDocument(doc);
+          preview = { text: content, target,
+            snapshots: doc.records.filter(record => record.record_type === "stock_snapshot").length,
+            rewards: doc.records.filter(record => record.record_type === "reward_delta").length };
+        }
+        inventoryBackupPreview.value = preview;
+        importText.value = content;
+        importFilename.value = input.name;
+        importError.value = content.trim() ? "" : "备份文件没有内容，请重新选择。";
+        importResult.value = null;
+        readingImportFile.value = false;
+      } catch (error) { showError(error.message || "无法读取备份文件，请重新选择。"); }
+    };
+    reader.onerror = () => showError("无法读取备份文件，请重新选择。");
+    reader.readAsText(input, "utf-8");
+  } catch (error) { showError(error.message || "无法读取备份文件，请重新选择。"); }
 }
 
 async function fillExample() {
   if (inventoryImportInputDisabled.value) return;
   loadingExample.value = true;
+  inventoryBackupPreview.value = null;
   const contextSeq = inventoryContextSeq, exchangeSeq = inventoryExchangeSeq;
   try {
     const res = await fetch(
@@ -3988,33 +4027,24 @@ function afterImport() {
 }
 
 // ---- 导出档案 ----
-async function doExport() {
-  if (!auth.isLoggedIn) {
-    goLogin();
-    return;
-  }
-  if (!accountId.value) {
-    alert("请先创建并选择一个子账号");
-    return;
-  }
-  const contextSeq = inventoryContextSeq;
+async function doExport(allAccounts = false) {
+  if (inventoryExportDisabled.value || (allAccounts && accounts.value.length < 2)) return;
+  const contextSeq = inventoryContextSeq, exchangeSeq = inventoryExchangeSeq;
+  const current = () => !inventoryDisposed && showArchive.value && contextSeq === inventoryContextSeq && exchangeSeq === inventoryExchangeSeq;
+  exporting.value = true;
+  exportNotice.value = "";
   try {
-    const opts = {
-      include: "current,rewards",
-      from: dayStartIso(rangeFrom.value),
-      to: nextDayStartIso(rangeTo.value),
-    };
-    if (exportAll.value && accounts.value.length > 1) {
-      opts.scope = "all";
-    } else {
-      opts.accountId = accountId.value;
-    }
-    const data = await exportInventory(opts);
-    if (contextSeq !== inventoryContextSeq) return;
-    downloadJson(data, "inventory-export.json");
+    const scope = allAccounts ? { scope: "all" } : { accountId: accountId.value };
+    const data = await exportInventory({ ...scope, include: "current,rewards" });
+    if (!current()) return;
+    const accountName = allAccounts ? "全部账号" : accounts.value.find(account => account.id === accountId.value)?.name;
+    const filename = backupFilename("库存", accountName, agentGameFilter.value);
+    downloadJson(data, filename);
+    exportNotice.value = backupDownloadNotice(filename);
   } catch (err) {
-    if (contextSeq !== inventoryContextSeq) return;
-    alert(humanErr(err, "导出失败"));
+    if (current()) alert(humanErr(err, "导出失败"));
+  } finally {
+    if (exchangeSeq === inventoryExchangeSeq) exporting.value = false;
   }
 }
 
@@ -4112,6 +4142,12 @@ watch([accountId, () => auth.isLoggedIn, () => auth.userInfo?.id, agentGameFilte
     });
   } else refresh();
 }, { flush: "sync" });
+
+usePendingBackupRestore(["inventory"], () => inventoryAccountReady.value && !inventoryExchangeDisabled.value &&
+  !loading.value && !error.value && currentLoadedContext.value === stockContext.value, async ({ file, sourceGame }, confirmOpened) => {
+  openInventoryExchange();
+  if (showArchive.value && confirmOpened()) await readBackupFile(file, true, sourceGame);
+});
 
 onBeforeUnmount(function () {
   manifestResizeObserver?.disconnect();
@@ -4225,12 +4261,6 @@ onBeforeUnmount(function () {
 }
 .inventory-exchange-content button:not(.inventory-import-link) { min-height: 44px; }
 .inventory-exchange-content :is(a, button, input):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
-.inventory-export-options { min-width: 0; border: 0; margin: 16px 0; padding: 0; }
-.inventory-export-option { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 12px; margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
-.inventory-export-option input { flex: none; accent-color: var(--accent); }
-.inventory-export-option span { min-width: 0; }
-.inventory-export-option strong, .inventory-export-option small { display: block; }
-.inventory-export-option small { color: var(--ink-60); }
 .import-error {
   color: var(--theme-danger-text, var(--rouge));
 }

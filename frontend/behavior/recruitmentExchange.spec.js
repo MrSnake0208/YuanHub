@@ -19,8 +19,10 @@ function render(props = {}) { let wrapper; wrapper = mount(RecruitmentExchange, 
 const button = (wrapper, text) => text === '确认导入' ? wrapper.findAll('.data-exchange-footer-actions button.primary')[0] : wrapper.findAll('button').find(item => item.text().startsWith(text))
 async function downloadBackup(wrapper, format = 'json') {
   await wrapper.get('[role="tab"][id$="-export-tab"]').trigger('click')
-  await wrapper.get('input[name="recruitment-export-format"][value="' + format + '"]').setValue(true)
-  await wrapper.get('.data-exchange-footer-actions button').trigger('click')
+  if (format === 'csv') {
+    wrapper.get('[role="tabpanel"][id$="-export-panel"] details').element.open = true
+    await button(wrapper, '下载记录表格').trigger('click')
+  } else await wrapper.get('.data-exchange-footer-actions button').trigger('click')
 }
 async function file(wrapper, document = documentFixture(), custom = {}) {
   if (!wrapper.props('open')) { await wrapper.vm.openImport(); await flushPromises() }
@@ -143,9 +145,10 @@ it.each([
 ])('中文导出文件名保留游戏和账号，清理非法字符及空名称：%s', async (accountName, safeName) => {
   const wrapper = render({ accountName })
   await downloadBackup(wrapper); await flushPromises()
-  expect(capturedFilename).toBe('YuanHub-招募档案完整备份-代号鸢-' + safeName + '.json')
+  const date = new Date().toLocaleDateString('sv-SE')
+  expect(capturedFilename).toBe('YuanHub-招募备份-' + safeName + '-代号鸢-' + date + '.json')
   await downloadBackup(wrapper, 'csv'); await flushPromises()
-  expect(capturedFilename).toBe('YuanHub-招募记录表格-代号鸢-' + safeName + '.csv')
+  expect(capturedFilename).toBe('YuanHub-招募记录表格-' + safeName + '-代号鸢-' + date + '.csv')
 })
 it('JSON按实际紧凑UTF8字节导出接近5MiB仍可恢复，超限快照不下载截断文件', async () => {
   const document = documentFixture(); document.events = Array.from({ length: 4000 }, (_, index) => ({ ...recruitmentEvent('e_' + index, 17), note: '' }))

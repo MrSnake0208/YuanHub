@@ -56,17 +56,19 @@
     </template>
     <template #import-footer><button class="primary" type="button" :disabled="pasteMode || !!success || !canImport || !preview?.can_commit || !preview?.stats.added || expired || loading || committing || !!submittedIntent" @click="commit">{{ committing ? '正在导入…' : eventCount ? '确认导入 ' + eventCount + ' 条' : '确认导入' }}</button></template>
     <template #export>
-      <div class="exchange-content">
-        <fieldset class="export-choices" :disabled="!canExport || exporting">
-          <legend>选择下载内容</legend>
-          <label class="export-choice"><input v-model="exportFormat" type="radio" name="recruitment-export-format" value="json"><span><strong>完整备份（JSON）</strong><small>用于恢复招募档案，包含完整记录与进度。</small></span></label>
-          <label class="export-choice"><input v-model="exportFormat" type="radio" name="recruitment-export-format" value="csv"><span><strong>记录表格（CSV）</strong><small>用于查看和分析，不能作为备份恢复。</small></span></label>
-        </fieldset>
-        <p v-if="tab === 'export' && error" ref="errorPanel" class="error" role="alert" tabindex="-1">{{ error }}</p>
-        <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
-      </div>
+      <BackupExportPanel title="招募备份" contents="抽卡记录和进度" :notice="exportNotice">
+        <template #feedback>
+          <p v-if="tab === 'export' && error" ref="errorPanel" class="error" role="alert" tabindex="-1">{{ error }}</p>
+        </template>
+        <ImportMoreOptions summary="更多下载方式">
+          <div>
+            <button class="btn ghost touch-target" type="button" :disabled="!canExport || exporting || loading || committing" @click="exportFile('csv')">下载记录表格</button>
+            <small>用 Excel 查看，不能用来恢复</small>
+          </div>
+        </ImportMoreOptions>
+      </BackupExportPanel>
     </template>
-    <template #export-footer><button class="primary" type="button" :disabled="!canExport || exporting || loading || committing" @click="exportFile(exportFormat)">{{ exporting ? '正在下载…' : exportFormat === 'json' ? '下载备份' : '下载' }}</button></template>
+    <template #export-footer><button class="primary" type="button" :disabled="!canExport || exporting || loading || committing" @click="exportFile('json')">{{ exporting ? '正在下载…' : '下载备份' }}</button></template>
   </DataExchangeDialog>
 </template>
 
@@ -79,18 +81,21 @@ import { computed, nextTick, onScopeDispose, reactive, ref, watch } from 'vue'
 import { commitRecruitmentImport, exportRecruitment, previewRecruitmentImport, getRecruitmentCatalog } from '../../api/recruitment.js'
 import { getOperatorCatalog } from '../../api/operator.js'
 import { RECORD_IMPORT_SCHEMA, recruitmentImportGuide } from './recruitmentImportGuide.js'
+import { usePendingBackupRestore } from '../../utils/pendingBackupRestore.js'
 import { downloadFile, MAX_IMPORT_BYTES, recruitmentCsv } from './rules.js'
+import { backupDownloadNotice, backupFilename, unwrapFullBackup } from '../../utils/backupFile.js'
+import BackupExportPanel from '../../components/BackupExportPanel.vue'
 const props = defineProps({ open: Boolean, accountId: String, accountName: String, identity: String, revision: Number, game: String, readOnly: Boolean, busy: Boolean, contextVersion: Number, requestVersion: Number })
 const emit = defineEmits(['committed', 'busy', 'update:open'])
 const documentData = ref(null), filename = ref(''), preview = ref(null), previewPage = ref(0), loading = ref(false), exporting = ref(false), committing = ref(false), error = ref(''), notice = ref(''), fileInput = ref(null), errorPanel = ref(null), expired = ref(false)
 const pasteMode = ref(false), pastedText = ref(''), pasteInput = ref(null)
-const tab = ref('import'), exportFormat = ref('json'), importContent = ref(null), importButton = ref(null), success = ref(null), showAll = ref(false)
+const tab = ref('import'), exportNotice = ref(''), importContent = ref(null), importButton = ref(null), success = ref(null), showAll = ref(false)
 const importSources = [
   { title: '本站招募备份', from: '在招募页「导入/导出 → 导出」下载完整备份。' },
   { title: 'AI 整理的抽卡记录', from: '把导入规范和抽卡截图或表格一起交给 AI，再选择它生成的备份文件或粘贴内容。' },
 ]
 const pasteHelpActive = computed(() => pasteMode.value || !!pastedText.value.trim())
-watch(() => props.open, open => { if (open) tab.value = 'import' })
+watch(() => props.open, open => { if (open) tab.value = 'import'; else exportNotice.value = '' })
 function closeDialog() {
   if (loading.value || committing.value || exporting.value) return false
   if (!submittedIntent.value) { clearPreview(); loading.value = false }
@@ -149,6 +154,7 @@ const sameOwner = token => alive && token.identity === props.identity && token.a
 const matches = token => sameOwner(token) && token.generation === generation
 function clearPreview() { generation++; preview.value = null; binding = null; requestId = ''; expired.value = false; previewPage.value = 0; clearTimeout(expiryTimer) }
 watch([() => props.identity, () => props.accountId, () => props.contextVersion, () => props.game], () => {
+  exportNotice.value = ''
   emit('update:open', false); success.value = null; pasteMode.value = false; pastedText.value = ''; clearPreview(); submittedIntent.value = null; documentData.value = null; filename.value = ''; error.value = ''; notice.value = ''; loading.value = false; committing.value = false; exporting.value = false; options.state_strategy = 'keep_current'; options.confirm_count_change = false
   if (fileInput.value) fileInput.value.value = ''
 })
@@ -158,12 +164,17 @@ watch([() => options.state_strategy, () => options.confirm_count_change], async 
   if (props.open && documentData.value && !loading.value) await generatePreview()
 })
 async function showError(message) { error.value = message; await nextTick(); errorPanel.value?.focus() }
-async function selectFile(event) {
+function selectFile(event) {
+  return readBackupFile(event.target.files?.[0])
+}
+async function readBackupFile(input) {
   if (committing.value || submittedIntent.value) return
   clearPreview(); documentData.value = null; notice.value = ''; error.value = ''; success.value = null; showAll.value = false
-  const file = event.target.files?.[0], token = capture()
-  if (!file || !canImport.value) return
+  const token = capture()
+  if (!input || !canImport.value) return
   try {
+    const file = await unwrapFullBackup(input, 'recruitment')
+    if (!matches(token)) return
     if (file.size > MAX_IMPORT_BYTES) throw new Error('文件超过 5 MiB，请选择完整且符合限制的招募档案备份')
     const text = await file.text()
     if (!matches(token)) return
@@ -171,6 +182,10 @@ async function selectFile(event) {
     await readImport(text, file.name, token)
   } catch (failure) { if (matches(token)) await showError(failure.message || '无法读取此备份') }
 }
+usePendingBackupRestore(['recruitment'], () => canImport.value && !loading.value && !exporting.value && !committing.value && !submittedIntent.value, async ({ file }, confirmOpened) => {
+  await openImport()
+  if (props.open && confirmOpened()) await readBackupFile(file)
+})
 async function readImport(text, name, token, allowCodeBlock = false) {
   if (new Blob([text]).size > MAX_IMPORT_BYTES) throw new Error('内容超过 5 MiB，请精简后重新导入')
   let content = text.replace(/^\uFEFF/, '').trim()
@@ -212,20 +227,19 @@ async function downloadGuide() {
   finally { guideLoading.value = false }
 }
 async function exportFile(format) {
-  if (!canExport.value || exporting.value) return
-  const token = capture(); exporting.value = true; error.value = ''; notice.value = ''
+  if (!canExport.value || exporting.value || loading.value || committing.value) return
+  const token = capture(); exporting.value = true; error.value = ''; exportNotice.value = ''
   try {
     const document = await exportRecruitment(token.accountId)
     if (!sameOwner(token)) return
-    const accountName = (props.accountName || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 48) || '未命名账号'
-    const filename = 'YuanHub-' + (format === 'json' ? '招募档案完整备份-' : '招募记录表格-') + token.game + '-' + accountName + '.' + format
+    const filename = backupFilename('招募', props.accountName, token.game, format)
     if (format === 'json') {
       const json = JSON.stringify(document)
       if (new Blob([json]).size > MAX_IMPORT_BYTES || document.events.length > 20000) throw new Error('快照超过可恢复备份的 5 MiB / 20,000 条结果限制，未生成截断文件')
       downloadFile(json, filename, 'application/json;charset=utf-8')
     }
     else downloadFile(recruitmentCsv({ accountId: document.source_account.account_id, accountName: props.accountName, game: document.game, baseline: document.baseline, pools: document.pools, events: document.events, batches: document.batches }), filename, 'text/csv;charset=utf-8')
-    notice.value = format === 'json' ? '已下载完整备份，可用于恢复' : '已导出表格，用于查看和分析'
+    exportNotice.value = backupDownloadNotice(filename)
   } catch (failure) { if (sameOwner(token)) await showError(failure.message || '导出失败') }
   finally { if (sameOwner(token)) exporting.value = false }
 }
@@ -278,7 +292,7 @@ onScopeDispose(() => { alive = false; generation++; clearTimeout(expiryTimer) })
 </script>
 
 <style scoped>
-.exchange-content{min-width:0;font-size:14px;line-height:1.7;overflow-wrap:anywhere}.exchange-content p{margin:10px 0}h3{font-family:var(--font-s)}button,select{font:inherit}button{cursor:pointer}button{min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:10px 16px}button:disabled{opacity:.5;cursor:not-allowed}button.primary{background:var(--tea);color:var(--on-strong);border-color:var(--tea)}button.text-button{border:0;background:transparent;padding:4px 0;color:var(--theme-strong-text, var(--tea));text-decoration:underline;text-underline-offset:4px}.hint,.file-caption{color:var(--ink-60)}.file-input{display:none}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:16px 0 10px}.file-caption{font-size:13px}.file-caption span{display:block}.restore-option{display:flex;flex-direction:column;gap:6px;margin:18px 0;font-size:13px}.check{display:flex;align-items:flex-start;gap:8px;font-size:13px}.check input{margin-top:5px;flex:none}.import-summary{display:flex;margin:24px 0 18px}.import-summary strong{display:block;font-variant-numeric:tabular-nums;font-weight:500}.import-summary span{font-size:13px;color:var(--ink-60)}.total-change{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;padding:12px 14px;background:var(--cream);border-radius:10px;font-variant-numeric:tabular-nums}.list-title{font-size:15px;margin:24px 0 6px}.preview-items{list-style:none;padding:0;margin:0 0 12px}.preview-items li{padding:12px 0;border-bottom:1px solid var(--line)}.preview-items li>div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px}.preview-items strong{font-weight:500}.preview-items p{font-size:13px;margin:6px 0 0}.preview-items span{color:var(--ink-60);font-size:13px;white-space:nowrap}.error,.risks{color:var(--theme-danger-text, var(--rouge))}.risks{padding-left:20px;font-size:13px}.overlap-warning{background:var(--cream);border-inline-start:3px solid var(--rouge);padding:12px}.success-mark{color:var(--theme-strong-text, var(--tea));font-size:36px}.restore-option select{min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--cream);color:var(--ink);padding:10px;min-width:0;max-width:100%}.retry-intent{margin-top:18px}.export-choices{min-width:0;margin:16px 0;padding:0;border:0}.export-choice{display:flex;align-items:center;gap:10px;min-height:44px;margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:10px;cursor:pointer}.export-choice input{flex:none;accent-color:var(--accent)}.export-choice span{min-width:0}.export-choice strong,.export-choice small{display:block}.export-choice small{color:var(--ink-60)}.export-choice:has(:checked){border-color:var(--accent);background:var(--cream)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}
+.exchange-content{min-width:0;font-size:14px;line-height:1.7;overflow-wrap:anywhere}.exchange-content p{margin:10px 0}h3{font-family:var(--font-s)}button,select{font:inherit}button{cursor:pointer}button{min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:10px 16px}button:disabled{opacity:.5;cursor:not-allowed}button.primary{background:var(--tea);color:var(--on-strong);border-color:var(--tea)}button.text-button{border:0;background:transparent;padding:4px 0;color:var(--theme-strong-text, var(--tea));text-decoration:underline;text-underline-offset:4px}.hint,.file-caption{color:var(--ink-60)}.file-input{display:none}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:16px 0 10px}.file-caption{font-size:13px}.file-caption span{display:block}.restore-option{display:flex;flex-direction:column;gap:6px;margin:18px 0;font-size:13px}.check{display:flex;align-items:flex-start;gap:8px;font-size:13px}.check input{margin-top:5px;flex:none}.import-summary{display:flex;margin:24px 0 18px}.import-summary strong{display:block;font-variant-numeric:tabular-nums;font-weight:500}.import-summary span{font-size:13px;color:var(--ink-60)}.total-change{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;padding:12px 14px;background:var(--cream);border-radius:10px;font-variant-numeric:tabular-nums}.list-title{font-size:15px;margin:24px 0 6px}.preview-items{list-style:none;padding:0;margin:0 0 12px}.preview-items li{padding:12px 0;border-bottom:1px solid var(--line)}.preview-items li>div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px}.preview-items strong{font-weight:500}.preview-items p{font-size:13px;margin:6px 0 0}.preview-items span{color:var(--ink-60);font-size:13px;white-space:nowrap}.error,.risks{color:var(--theme-danger-text, var(--rouge))}.risks{padding-left:20px;font-size:13px}.overlap-warning{background:var(--cream);border-inline-start:3px solid var(--rouge);padding:12px}.success-mark{color:var(--theme-strong-text, var(--tea));font-size:36px}.restore-option select{min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--cream);color:var(--ink);padding:10px;min-width:0;max-width:100%}.retry-intent{margin-top:18px}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}
 .paste-label{display:block;margin-top:18px;font-weight:600}.paste-input{display:block;box-sizing:border-box;width:100%;resize:vertical;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--cream);color:var(--ink);font:14px/1.6 monospace}
 </style>
 <style scoped src="./recruitmentExchangeDesktop.css"></style>

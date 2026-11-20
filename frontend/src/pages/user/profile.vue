@@ -580,6 +580,7 @@
             </details>
             <p class="connection-safety"><ShieldCheck :size="15" aria-hidden="true" />连接码不是登录密码，请仅提供给你信任的工具。</p>
           </div>
+          <AccountBackupCard id="backup-restore" :account="!accountsLoading && !accountLoadError ? currentAccount : undefined" />
           <IntegrationReaderConnection
             v-if="auth.userInfo?.id && canManageAnyFeedback(auth.adminAccess)"
             :key="'feedback-' + auth.userInfo.id"
@@ -641,6 +642,7 @@ import SiteFooter from "../../components/SiteFooter.vue";
 import { auth } from "../../store/auth.js";
 import { beta } from "../../store/beta.js";
 import AccountSwitcher from "../../components/AccountSwitcher.vue";
+import AccountBackupCard from "../../components/account/AccountBackupCard.vue";
 import GameAccountManager from "../../components/GameAccountManager.vue";
 import { listAccounts } from "../../api/accounts.js";
 import {

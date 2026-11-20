@@ -1014,13 +1014,12 @@ it('页头打开备份弹窗，分享不改写草稿，关闭先确认且重新�
   const reopened = new DOMWrapper(document.body).get('.data-exchange-dialog')
   expect(reopened.get('textarea').element.value).toBe('')
   await reopened.get('[role="tab"][id$="-export-tab"]').trigger('click')
-  expect(reopened.get('input[value="archive"]').element.checked).toBe(true)
-  expect(reopened.find('input[name="operator-export-scope"]').exists()).toBe(true)
-  await reopened.get('input[value="organization"]').setValue(true)
-  expect(reopened.find('input[name="operator-export-scope"]').exists()).toBe(false)
+  expect(reopened.get('.data-exchange-footer-actions button').text()).toBe('下载备份')
   await reopened.get('[aria-label="关闭导入/导出"]').trigger('click'); await flushPromises()
   await wrapper.get('.archive-toggle').trigger('click'); await flushPromises()
-  expect(new DOMWrapper(document.body).get('input[value="archive"]').element.checked).toBe(true)
+  const nextExchange = new DOMWrapper(document.body).get('.data-exchange-dialog')
+  await nextExchange.get('[role="tab"][id$="-export-tab"]').trigger('click')
+  expect(nextExchange.get('.data-exchange-footer-actions button').text()).toBe('下载备份')
 })
 
 it('更多筛选仅统计高级条件，关闭面板仍保留条件与结果', async () => {

@@ -1,7 +1,7 @@
 <template>
   <details class="import-more-options" :open="open" @toggle="$emit('toggle', $event)">
     <summary>
-      其他方式与帮助
+      {{ summary }}
       <ChevronDown class="import-more-chevron" :size="16" aria-hidden="true" />
     </summary>
     <div class="import-more-content"><slot /></div>
@@ -11,7 +11,7 @@
 <script setup>
 import { ChevronDown } from '@lucide/vue'
 
-defineProps({ open: { type: Boolean, default: undefined } })
+defineProps({ open: { type: Boolean, default: undefined }, summary: { type: String, default: '其他方式与帮助' } })
 defineEmits(['toggle'])
 </script>
 

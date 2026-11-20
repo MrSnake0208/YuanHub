@@ -99,7 +99,7 @@ it('库存备份在弹窗内切换页签，关闭先确认未导入文本，切�
   await exchange.get('textarea').setValue('pending backup')
   expect(exchange.get('.data-exchange-footer-actions button').element.disabled).toBe(false)
   await exchange.get('[role="tab"][id$="-export-tab"]').trigger('click')
-  expect(exchange.findAll('input[name="inventory-export-scope"]')).toHaveLength(2)
+  expect(exchange.get('.data-exchange-footer-actions button').text()).toBe('下载备份')
   await exchange.get('[role="tab"][id$="-import-tab"]').trigger('click')
   expect(exchange.get('textarea').element.value).toBe('pending backup')
   dialog.confirm.mockResolvedValueOnce(false)
