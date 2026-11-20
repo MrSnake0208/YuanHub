@@ -1126,10 +1126,10 @@ it('JSON compact preview uses one existing import entry, never writes before con
   await selectJson(wrapper)
   expect(new DOMWrapper(document.body).findAll('.data-exchange-dialog')).toHaveLength(1)
   expect(new DOMWrapper(document.body).get('[role="tab"][aria-selected="true"]').attributes('id')).toMatch(/-import-tab$/)
-  expect(new DOMWrapper(document.body).get('.star-exchange-preview').text()).toContain('目标 A')
-  expect(new DOMWrapper(document.body).get('.star-exchange-preview').text()).toContain('主星 2 颗')
-  expect(new DOMWrapper(document.body).get('.star-exchange-preview').text()).toContain('270')
-  expect(new DOMWrapper(document.body).get('.star-exchange-preview').text()).toContain('原有佩戴与养成计划按现有保护和继承规则处理')
+  expect(new DOMWrapper(document.body).get('.backup-import-card').text()).toContain('目标 A')
+  expect(new DOMWrapper(document.body).get('.backup-import-summary dd').text()).toBe('2')
+  expect(new DOMWrapper(document.body).get('.backup-import-details').text()).toContain('270')
+  expect(new DOMWrapper(document.body).get('.backup-import-warning').text()).toContain('原有佩戴与养成计划按现有保护和继承规则处理')
   expect(confirmStarInventoryImport).not.toHaveBeenCalled()
   const callback = embedMount.mock.calls.at(-1)[1], pendingScopes = []
   handle.setReviewView.mockImplementation(() => { pendingScopes.push(callback.getOcrRebuildScope()) })
@@ -1154,16 +1154,16 @@ it.each(['switch', 'roundtrip', 'identity', 'unmount'])('a JSON file read that f
   gate.resolve(await compactImportFile().text()); await selecting; await flushPromises()
   expect(previewStarInventoryImport).not.toHaveBeenCalled()
   expect(confirmStarInventoryImport).not.toHaveBeenCalled()
-  if (change !== 'unmount') { expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(false); wrapper.unmount() }
+  if (change !== 'unmount') { expect(new DOMWrapper(document.body).find('.backup-import-summary').exists()).toBe(false); wrapper.unmount() }
 })
 it('invalid reselection clears the previous JSON preview and a switched account cannot confirm it', async () => {
   const { wrapper } = await jsonImportHost(); await selectJson(wrapper)
-  expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(true)
+  expect(new DOMWrapper(document.body).find('.backup-import-summary').exists()).toBe(true)
   await selectJson(wrapper, { name: 'bad.json', size: 4, text: async () => 'oops' })
-  expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(false)
+  expect(new DOMWrapper(document.body).find('.backup-import-summary').exists()).toBe(false)
   expect(new DOMWrapper(document.body).get('.star-exchange-error').text()).toContain('JSON 无法解析')
   await selectJson(wrapper); activeAccount.set('acc-2'); await flushPromises()
-  expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(false)
+  expect(new DOMWrapper(document.body).find('.backup-import-summary').exists()).toBe(false)
   expect(confirmStarInventoryImport).not.toHaveBeenCalled(); wrapper.unmount()
 })
 it('drafts and real backend rejections retain old business data and actionable error details', async () => {
@@ -1174,7 +1174,7 @@ it('drafts and real backend rejections retain old business data and actionable e
   confirmStarInventoryImport.mockRejectedValueOnce(Object.assign(new Error('旧养成计划仍待继承，请先处理'), { status: 409, code: 'star_plan_inheritance_pending' }))
   await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
   expect(new DOMWrapper(document.body).get('.star-exchange-error').text()).toContain('旧养成计划仍待继承')
-  expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(true)
+  expect(new DOMWrapper(document.body).find('.backup-import-summary').exists()).toBe(true)
   expect(handle.applyCloudBusinessSnapshot).not.toHaveBeenCalled()
   expect(handle.confirmDataExchangeImport).not.toHaveBeenCalled(); wrapper.unmount()
 })
@@ -1184,7 +1184,7 @@ it('uncertain JSON upload does not refresh or overwrite local data and blocks fu
   await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
   expect(handle.applyCloudBusinessSnapshot).not.toHaveBeenCalled()
   expect(new DOMWrapper(document.body).get('.star-exchange-error').text()).toContain('补传结果尚待核对')
-  expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(true)
+  expect(new DOMWrapper(document.body).find('.backup-import-summary').exists()).toBe(true)
   expect(patchCurrentStarState).not.toHaveBeenCalled(); wrapper.unmount()
 })
 it('YuanHub backup files keep the existing embedded preview and full replacement confirmation', async () => {
@@ -1201,8 +1201,8 @@ it('a real complete local OCR file previews and submits business fields without 
   const { wrapper } = await jsonImportHost()
   const text = readFileSync('test/fixtures/maayuan-full-inventory.json', 'utf8')
   await selectJson(wrapper, { name: 'inventory.json', size: text.length, text: async () => text })
-  await vi.waitFor(() => expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(true))
-  expect(new DOMWrapper(document.body).get('.star-exchange-preview').text()).toContain('主星 69 颗 · 辅星 105 颗')
+  await vi.waitFor(() => expect(new DOMWrapper(document.body).find('.backup-import-summary').exists()).toBe(true))
+  expect(new DOMWrapper(document.body).findAll('.backup-import-summary dd').map(item => item.text())).toEqual(['69', '105'])
   await new DOMWrapper(document.body).get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
   expect(confirmStarInventoryImport).toHaveBeenCalledTimes(1)
   const body = confirmStarInventoryImport.mock.calls[0][1]
@@ -1224,5 +1224,5 @@ it.each(['switch', 'roundtrip', 'identity', 'unmount'])('a confirmed POST finish
   gate.resolve({ status: 'synced', account_id: 'acc-1' }); await flushPromises()
   expect(handle.applyCloudBusinessSnapshot).not.toHaveBeenCalled()
   expect(confirmStarInventoryImport).toHaveBeenCalledTimes(1)
-  if (change !== 'unmount') { expect(new DOMWrapper(document.body).find('.star-exchange-preview').exists()).toBe(false); wrapper.unmount() }
+  if (change !== 'unmount') { expect(new DOMWrapper(document.body).find('.backup-import-summary').exists()).toBe(false); wrapper.unmount() }
 })

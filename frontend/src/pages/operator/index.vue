@@ -153,9 +153,9 @@
           <DataExchangeDialog v-model:open="showArchive" v-model:tab="operatorExchangeTab" :account-name="currentAccountName" :game="gameFilter" :busy="importing || exporting" :before-close="beforeCloseOperatorExchange" @close="discardOperatorImport">
             <template #import><div ref="backupImportTarget"></div></template>
             <template #import-footer>
-              <button v-if="organizationImportPreview" class="btn primary" type="button" :disabled="importing || !organizationReady || organizationData.revision !== organizationImportPreview.revision" @click="commitOrganizationImport">{{ importing ? '恢复中…' : '确认恢复分类' }}</button>
-              <button v-else-if="importV2Preview" class="btn primary" type="button" :disabled="importing" @click="commitV2Import">{{ importing ? '导入中…' : '确认导入' }}</button>
-              <button v-else class="btn primary" type="button" :disabled="importing || !canCommitV3Import" @click="commitV3Import">{{ importing ? '保存中…' : '确认导入' }}</button>
+              <button v-if="organizationImportPreview && !organizationImportMessage" class="btn primary" type="button" :disabled="importing || !organizationReady || organizationData.revision !== organizationImportPreview.revision" @click="commitOrganizationImport">{{ importing ? '恢复中…' : '确认导入' }}</button>
+              <button v-else-if="importV2Preview" class="btn primary" type="button" :disabled="importing" @click="commitV2Import">{{ importing ? '导入中…' : '确认导入 ' + importV2Preview.recordCount + ' 条' }}</button>
+              <button v-else-if="importPreview && !importResult" class="btn primary" type="button" :disabled="importing || !canCommitV3Import" @click="commitV3Import">{{ importing ? '保存中…' : importPreview.accepted + importPreview.partial ? '确认导入 ' + (importPreview.accepted + importPreview.partial) + ' 条' : '确认导入' }}</button>
             </template>
             <template #export>
               <BackupExportPanel title="密探备份" contents="练度、状态、备注和养成目标" :notice="exportNotice">
@@ -173,53 +173,47 @@
 
           <!-- 保持预览与回执单源：扫描复核留在页面，备份内容移入弹窗。 -->
           <Teleport v-if="showImport || backupImportTarget" :to="backupImportTarget || 'body'" :disabled="showImport">
-            <div class="import-box" :class="!showImport && 'operator-exchange-body backup-import'" v-reveal>
+            <div class="import-box" :class="!showImport && 'operator-exchange-body backup-import backup-import-flow'" v-reveal>
               <OperatorScanReviewForm v-if="selectedScanReview" :key="selectedScanReview.account_id + ':' + selectedScanReview.record_id + ':' + selectedScanReview.operator_id"
                 ref="scanReviewForm" class="scan-review-context" :review="selectedScanReview" :catalog="catalogMap[selectedScanReview.operator_id] || {}"
                 :account-name="currentAccountName" :current="scanReviewCurrent" :current-loading="scanReviewCurrentLoading" :current-error="scanReviewCurrentError" :busy="importing"
                 @change="onScanReviewChange" @preview="previewV3Import" @close="closeScanReview" @dismiss="closeSelectedScanReview" @readback="readScanReviewCurrent" />
               <template v-if="!showImport">
-                <p class="tip">用 MaaYuan 自动同步时不需要在这里导入，同步结果会直接出现在对应账号。</p>
-                <div class="backup-file-actions">
-                  <button type="button" class="btn primary file-label touch-target" :disabled="importing" @click="backupFileInput.click()">选择备份文件</button>
-                  <input ref="backupFileInput" type="file" hidden :disabled="importing" accept=".json,application/json" @change="onFilePick" />
-                  <button v-if="importFromFile && importText.trim() && !importing && !importError && !importPreview && !importV2Preview && !organizationImportPreview && !importResult && !organizationImportMessage" type="button" class="btn ghost touch-target" :disabled="backupPreviewDisabled" @click="previewBackupImport">预览这个文件</button>
+                <input ref="backupFileInput" type="file" hidden :disabled="importing" accept=".json,application/json" @change="onFilePick" />
+                <BackupImportPanel :feature="isOrganizationImport ? '密探分类' : '密探'" :account-name="currentAccountName"
+                  :filename="backupImportFilename || (importPreview || importV2Preview || organizationImportPreview ? '粘贴的备份内容' : '')"
+                  :source-name="operatorBackupSourceName" :sources="operatorImportSources" :done="operatorBackupSuccess" :done-title="operatorBackupResultTitle"
+                  :disabled="importing" @choose="backupFileInput.click()" @again="restartOperatorBackupImport">
+                  <template #intro><p class="backup-import-hint">用 MaaYuan 自动同步时不需要在这里导入，同步结果会直接出现在对应账号。</p></template>
+                </BackupImportPanel>
+                <p v-if="(importing || (backupImportRetry && !importError)) && !operatorBackupSuccess && !importPreview && !importV2Preview && !organizationImportPreview" role="status">正在核对备份…</p>
+                <div v-if="importError" class="backup-import-actions">
+                  <p id="operator-import-error" class="import-error" role="alert">{{ importError }}</p>
+                  <button v-if="!importPreview && !importV2Preview && !organizationImportPreview && (importText.trim() || backupImportRetry)" type="button" class="backup-import-text"
+                    :disabled="importing || (!!importText.trim() && backupPreviewDisabled)" @click="retryOperatorBackupPreview">重试</button>
                 </div>
-                <ImportGuide :sources="operatorImportSources" />
-                <div class="import-target">
-                  <span>导入目标</span><strong>{{ currentAccountName }}</strong>
-                  <small v-if="isOrganizationImport">已识别分类设置备份</small>
-                </div>
-                <p v-if="importError" id="operator-import-error" class="import-error" role="alert">{{ importError }}</p>
-                <p v-show="importPreview || importV2Preview || organizationImportPreview" id="operator-import-tip" class="tip">确认后才写入当前账号，请核对预览范围；完整快照可能覆盖未列出的内容。</p>
+                <p v-if="importPreview || importV2Preview" id="operator-import-tip" class="backup-import-warning">确认后才写入当前账号。完整快照可能覆盖未列出的内容，请先核对影响范围。</p>
               </template>
               <p v-if="scanReviewSavedMessage" class="tip" role="status">{{ scanReviewSavedMessage }}</p>
               <p v-if="selectedScanReview && importError" ref="scanReviewErrorEl" class="import-error" role="alert" tabindex="-1">{{ importError }}</p>
               <section v-if="organizationImportPreview" class="import-preview organization-import-preview" aria-live="polite" aria-label="分类恢复预览">
-                <div class="import-preview-head">
-                  <div><strong>分类恢复预览 · {{ currentAccountName }}</strong>
-                    <span>{{ organizationImportPreview.content.pinned_ids.length }} 位置顶 · {{ organizationImportPreview.content.tags.length }} 个标签</span>
-                  </div>
+                <BackupImportSummary :counts="[['位置顶', organizationImportPreview.content.pinned_ids.length], ['个标签', organizationImportPreview.content.tags.length]]">确认后将替换置顶、分组顺序和全部标签。密探练度、养成状态和特别关注保持不变。</BackupImportSummary>
+                <div v-if="organizationData.revision !== organizationImportPreview.revision" class="backup-import-actions">
+                  <p class="import-error" role="alert">当前分类已有更新，请重试预览后再恢复。</p>
+                  <button class="backup-import-text" type="button" :disabled="backupPreviewDisabled" @click="previewBackupImport">重试</button>
                 </div>
-                <p class="import-preview-warning">将替换当前账号已保存的置顶、分组顺序和全部标签。密探练度、养成状态和特别关注保持不变。</p>
-                <p v-if="organizationData.revision !== organizationImportPreview.revision" class="import-preview-warning" role="alert">当前分类已有更新，请重新校验并预览后再恢复。</p>
-                <p class="tip">分组顺序：{{ organizationImportPreview.content.status_order.filter(state => discardedEnabled || state !== 'discarded').map(operatorAnnotationStatusLabel).join(' → ') }}</p>
-                <p v-if="organizationImportPreview.content.tags.length" class="tip">标签：{{ organizationImportPreview.content.tags.map(tag => tag.name).join('、') }}</p>
+                <BackupImportDetails>
+                  <p>分组顺序：{{ organizationImportPreview.content.status_order.filter(state => discardedEnabled || state !== 'discarded').map(operatorAnnotationStatusLabel).join(' → ') }}</p>
+                  <p v-if="organizationImportPreview.content.tags.length">标签：{{ organizationImportPreview.content.tags.map(tag => tag.name).join('、') }}</p>
+                </BackupImportDetails>
               </section>
-              <p v-if="organizationImportMessage" class="tip" role="status">{{ organizationImportMessage }}</p>
-              <p v-if="isOrganizationImport && organizationError" class="import-error" role="alert">{{ organizationError }} <button type="button" class="btn ghost" :disabled="organizationLoading || organizationSaving" @click="reloadOrganization">重新读取分类</button></p>
+              <p v-if="!showImport && isOrganizationImport && organizationError" class="import-error" role="alert">{{ organizationError }} <button type="button" class="backup-import-text" :disabled="organizationLoading || organizationSaving || importing" @click="retryOrganizationPreview">重试</button></p>
               <section v-if="importV2Preview" class="import-preview" aria-live="polite" aria-label="旧版备份导入预览">
-                <div class="import-preview-head">
-                  <div>
-                    <strong>旧版备份导入预览 · {{ currentAccountName }}</strong>
-                    <span>{{ importV2Preview.recordCount }} 条记录 · 涉及 {{ importV2Preview.entries.length }} 位密探 · 当前已有 {{ importV2Preview.overlapCount }} 位</span>
-                  </div>
-                </div>
-                <p v-if="importV2Preview.fullCount" class="import-preview-warning" role="alert">
+                <BackupImportSummary :counts="[['备份记录', importV2Preview.recordCount], ['涉及密探', importV2Preview.entries.length], ['当前已有', importV2Preview.overlapCount]]">确认后提交给服务器，实际写入以服务器校验和回执为准。</BackupImportSummary>
+                <p v-if="importV2Preview.fullCount" class="backup-import-warning" role="alert">
                   包含 {{ importV2Preview.fullCount }} 条全量快照；当前账号中有 {{ importV2Preview.possibleRemovedCount }} 位密探未列在档案中，可能被覆盖移除。请先导出备份。
                 </p>
-                <p class="tip">此处为本地影响范围预览；最终校验与实际写入结果以服务器为准。</p>
-                <details><summary>查看涉及密探</summary><ul><li v-for="entry in importV2Preview.entries" :key="entry.id">{{ entry.name }} · {{ entry.id }}</li></ul></details>
+                <BackupImportDetails><ul><li v-for="entry in importV2Preview.entries" :key="entry.id">{{ entry.name }} · {{ entry.id }}</li></ul></BackupImportDetails>
               </section>
               <section
                 v-if="v3Receipt"
@@ -227,7 +221,7 @@
                 aria-live="polite"
                 :aria-label="importPreview ? '导入预览' : '逐项保存回执'"
               >
-                <div class="import-preview-head">
+                <div v-if="showImport" class="import-preview-head">
                   <div>
                     <strong>{{ importPreview ? '预览影响 · 尚未保存' : '服务器保存回执' }}</strong>
                     <span
@@ -248,20 +242,21 @@
                     {{ importing ? "保存中…" : "确认保存" }}
                   </button>
                 </div>
+                <BackupImportSummary v-if="!showImport && importPreview" :counts="[['完整写入', v3Receipt.accepted], ['部分写入', v3Receipt.partial], ['待复核或拒绝', v3Receipt.review + v3Receipt.rejected]]">确认后才会保存可接受的内容。{{ v3Receipt.unchanged }} 条无变化。</BackupImportSummary>
                 <p v-if="selectedScanReview && importPreview?.unchanged && canCommitV3Import" class="tip">与现值一致也可确认复核，无需修改成其他数值。</p>
-                <label v-if="importPreview && importPreview.review && !selectedScanReview" class="import-review-confirm">
+                <label v-if="importPreview && importPreview.review && !selectedScanReview" class="import-review-confirm" :class="{ 'backup-import-warning': !showImport }">
                   <input
                     v-model="importConfirmReview"
                     type="checkbox"
                     :disabled="importing"
                     @change="onImportReviewChange"
                   />
-                  <span>确认写入需要人工复核的分区；勾选后请重新预览</span>
+                  <span>{{ showImport ? '确认写入需要人工复核的分区；勾选后请重新预览' : '确认写入需要人工复核的分区' }}</span>
                 </label>
                 <p v-if="v3Receipt.rejected" class="import-preview-warning">
                   被拒绝的密探不会写入，其余可接受条目仍可继续导入。
                 </p>
-                <div class="import-preview-list">
+                <component :is="showImport ? 'div' : BackupImportDetails" class="import-preview-list">
                   <details
                     v-for="(item, index) in v3Receipt.items"
                     :key="item.recordId + ':' + item.operatorId + ':' + index"
@@ -313,11 +308,11 @@
                       </li>
                     </ul>
                   </details>
-                </div>
+                </component>
                 <p v-if="!v3Receipt.items.length" class="import-preview-warning">暂时无法确认每项是否保存。请重新读取当前档案核对，复核提醒会继续保留。</p>
               </section>
               <div
-                v-if="importResult && importResult.kind === 'v2'"
+                v-if="showImport && importResult && importResult.kind === 'v2'"
                 class="import-result"
               >
                 导入完成：接受 {{ importResult.accepted }} 条 · 重复
@@ -333,7 +328,7 @@
                 <button class="ok" @click="afterImport">刷新养成</button>
               </div>
               <div
-                v-else-if="importResult && importResult.kind === 'v3'"
+                v-else-if="showImport && importResult && importResult.kind === 'v3'"
                 class="import-result"
                 role="status"
               >
@@ -347,20 +342,13 @@
                   :disabled="importing"
                   aria-label="密探或分类备份内容"
                   :aria-invalid="!!importError"
-                  :aria-describedby="importError ? 'operator-import-tip operator-import-error' : 'operator-import-tip'"
+                  :aria-describedby="importError ? 'operator-import-error' : (importPreview || importV2Preview ? 'operator-import-tip' : undefined)"
                   autocomplete="off"
                   placeholder="也可以把备份文件内容粘贴到这里"
-                  @input="importFromFile = false; onImportTextInput()"
+                  @input="onOperatorBackupPasteInput"
                 ></textarea>
-                <div class="import-actions">
-                  <button v-if="isOrganizationImport" class="btn ghost touch-target" type="button" :disabled="backupPreviewDisabled" @click="previewBackupImport">校验并预览分类</button>
-                  <button v-else-if="[3, 4, 5].includes(importDocumentVersion)" class="btn ghost touch-target" type="button" :disabled="backupPreviewDisabled" @click="previewBackupImport">
-                    {{ importing ? "校验中…" : importPreview ? "重新预览" : "校验并预览" }}
-                  </button>
-                  <button v-else class="btn ghost touch-target" type="button" :disabled="backupPreviewDisabled" @click="previewBackupImport">
-                    {{ importing ? "校验中…" : "校验并预览" }}
-                  </button>
-                </div>
+                <button v-if="!importFromFile && !importPreview && !importV2Preview && !organizationImportPreview && !operatorBackupSuccess"
+                  class="btn ghost" type="button" :disabled="backupPreviewDisabled" @click="previewBackupImport">核对内容</button>
                 <button class="btn ghost touch-target" type="button" :disabled="importing" aria-describedby="operator-import-example-tip" @click="fillExample">填入示例</button>
                 <p id="operator-import-example-tip">请勿将示例保存到真实账号，确认后会改动当前养成记录。</p>
                 <ImportGuide :sources="operatorImportSources" detail />
@@ -3006,6 +2994,9 @@ import { downloadJson } from '../../utils/downloadFile.js';
 import { hasPendingBackupRestore, usePendingBackupRestore } from '../../utils/pendingBackupRestore.js';
 import { backupDownloadNotice, backupFilename, FULL_BACKUP_MAX_BYTES, unwrapFullBackup } from '../../utils/backupFile.js';
 import BackupExportPanel from '../../components/BackupExportPanel.vue';
+import BackupImportPanel from '../../components/BackupImportPanel.vue';
+import BackupImportSummary from '../../components/BackupImportSummary.vue';
+import BackupImportDetails from '../../components/BackupImportDetails.vue';
 import { operatorHuaji, operatorHuajiMax, operatorHuajiDisplayLabel, operatorHuajiAction, operatorAwakeningSupported, operatorAwakeningUpgradeSupported, operatorHuajiDraft } from '../../utils/operatorHuaji.js';
 import { compareOperatorEntries } from '../../utils/operatorSort.js';
 import OperatorMilestoneDialog from '../../components/operator/OperatorMilestoneDialog.vue';
@@ -3335,6 +3326,8 @@ watch([showArchive, () => auth.userInfo?.id], () => {
 }, { flush: "sync" });
 const backupImportTarget = ref(null);
 const backupFileInput = ref(null);
+const backupImportFilename = ref("");
+const backupImportRetry = ref(null);
 // 仅控制页面扫描复核区，备份弹窗由 showArchive 控制。
 const showImport = ref(false);
 const importText = ref("");
@@ -3617,6 +3610,8 @@ watch(
     editingOp.value = null;
     editConflictDraft.value = null;
     resetImportPreview();
+    backupImportFilename.value = "";
+    backupImportRetry.value = null;
     importText.value = "";
     importResult.value = null;
     importError.value = "";
@@ -3704,6 +3699,8 @@ watch(() => [accountId.value, gameFilter.value, auth.isLoggedIn, auth.userInfo?.
   scanReviewCurrentLoading.value = false;
   scanReviewSavedMessage.value = '';
   scanReviews.value = [];
+  backupImportFilename.value = "";
+  backupImportRetry.value = null;
   importText.value = '';
   importResult.value = null;
   importError.value = '';
@@ -3773,6 +3770,24 @@ const importDocumentVersion = computed(function () {
     return null;
   }
 });
+const operatorBackupSourceName = computed(() => {
+  if (!importText.value.trim()) return "";
+  try {
+    const doc = parseImportDocument();
+    const source = doc?.source_account || (doc?.accounts?.length === 1 ? doc.accounts[0] : null);
+    return typeof source?.name === "string" ? source.name : "";
+  } catch { return ""; }
+});
+const operatorBackupSuccess = computed(() => {
+  if (organizationImportMessage.value) return organizationImportMessage.value;
+  const result = importResult.value;
+  if (!result) return "";
+  return result.kind === "v2"
+    ? [`接受 ${result.accepted ?? 0} 条`, `重复 ${result.duplicates ?? 0} 条`, result.superseded ? `已归档 ${result.superseded} 条` : "", result.warnings?.length ? `警告 ${result.warnings.length} 条` : ""].filter(Boolean).join(" · ")
+    : `完整写入 ${result.accepted} 条 · 部分写入 ${result.partial} 条 · 待复核或拒绝 ${result.review + result.rejected} 条 · 无变化 ${result.unchanged} 条`;
+});
+const operatorBackupResultTitle = computed(() =>
+  importResult.value?.kind === "v3" && !importResult.value.accepted && !importResult.value.partial ? "已核对导入结果" : "");
 const backupPreviewDisabled = computed(() => importing.value || !importText.value.trim() ||
   (isOrganizationImport.value && (!organizationReady.value || !accountId.value)) ||
   ([3, 4, 5].includes(importDocumentVersion.value) && !accountId.value));
@@ -3819,6 +3834,8 @@ async function beforeCloseOperatorExchange() {
 }
 
 function discardOperatorImport() {
+  backupImportFilename.value = "";
+  backupImportRetry.value = null;
   importText.value = '';
   importFromFile.value = false;
   onImportTextInput();
@@ -9105,7 +9122,7 @@ async function commitOrganizationImport() {
       if (!importRequestIsCurrent(operation, contextSeq, preview.accountId)) return;
       organizationManager.value?.resetDraft();
       resetImportPreview();
-      organizationImportMessage.value = "分类已恢复并保存到当前账号";
+      organizationImportMessage.value = `已恢复 ${preview.content.pinned_ids.length} 位置顶、${preview.content.tags.length} 个标签及分组顺序。`;
       importText.value = "";
     }
   } catch (err) {
@@ -9261,6 +9278,7 @@ async function commitV3Import() {
 function onImportReviewChange() {
   importPreviewKey.value = "";
   importResult.value = null;
+  if (!showImport.value) void previewBackupImport();
 }
 
 function importStatusLabel(status) {
@@ -9390,15 +9408,43 @@ function previewBackupImport() {
   return previewV2Import();
 }
 
+function onOperatorBackupPasteInput() {
+  backupImportFilename.value = "";
+  backupImportRetry.value = null;
+  importFromFile.value = false;
+  onImportTextInput();
+}
+
+async function retryOrganizationPreview() {
+  const context = currentContextSeq, operation = importOperationSeq;
+  if (await reloadOrganization() && context === currentContextSeq && operation === importOperationSeq && showArchive.value) previewBackupImport();
+}
+
+function retryOperatorBackupPreview() {
+  if (importText.value.trim()) return previewBackupImport();
+  if (backupImportRetry.value) return readBackupFile(...backupImportRetry.value);
+}
+
+function restartOperatorBackupImport() {
+  discardOperatorImport();
+  subjectiveRefreshKey.value += 1;
+  void loadOperatorAnnotations();
+  void loadAgentFavorites();
+}
+
 function onFilePick(event) {
   const partKey = isOrganizationImport.value ? "operator_organization" : "operator";
-  return readBackupFile(event?.target?.files?.[0], partKey);
+  const file = event?.target?.files?.[0];
+  if (event?.target) event.target.value = "";
+  return readBackupFile(file, partKey);
 }
 
 async function readBackupFile(input, partKey, guided = false) {
   if (!input || importing.value) return;
   selectedScanReview.value = null;
-  onImportTextInput();
+  discardOperatorImport();
+  backupImportFilename.value = input.name;
+  backupImportRetry.value = [input, partKey, guided];
   const contextSeq = currentContextSeq;
   const operation = importOperationSeq;
   const targetAccount = accountId.value;
@@ -9418,6 +9464,7 @@ async function readBackupFile(input, partKey, guided = false) {
         if ((guided || file !== input) && (JSON.parse(content)?.format === OPERATOR_ORGANIZATION_FORMAT) !== (partKey === "operator_organization")) {
           throw new Error("备份内容与要恢复的功能不一致，请重新选择文件。");
         }
+        backupImportRetry.value = null;
         importText.value = content;
         importFromFile.value = true;
         onImportTextInput();
@@ -9724,15 +9771,13 @@ onBeforeUnmount(function () {
 .scan-review-panel h2 span { color: var(--theme-danger-text, var(--rouge)); }
 .scan-review-panel button { border: 1px solid var(--rouge); border-radius: 8px; background: var(--surface); color: var(--ink); cursor: pointer; }
 .scan-review-panel button:focus-visible, .scan-review-context button:focus-visible { outline: 2px solid var(--theme-focus, var(--brand-blue)); outline-offset: 2px; }
-.import-box.operator-exchange-body { margin: 0; padding: 0; border: 0; background: transparent; }
+.import-box.operator-exchange-body { margin: 16px 0 0; padding: 0; border: 0; background: transparent; }
+.import-box.operator-exchange-body .import-preview { display: grid; gap: 8px; margin: 0; }
 .import-box.operator-exchange-body :is(
-  .tip, .import-target, .import-error, .import-preview-warning, .import-preview-head span,
+  .tip, .import-error, .import-preview-warning, .import-preview-head span,
   .import-preview-item summary small, .import-status, .import-change-list > div,
   .import-issue-list, .import-review-confirm, .import-result, .import-result .ok
 ) { font-size: 13px; }
-.import-box.operator-exchange-body .import-target small { font-size: inherit; color: var(--ink-60); }
-.import-box.operator-exchange-body textarea { font-size: 14px; }
-.operator-exchange-body :is(button, input[type="file"], summary) { min-height: 44px; }
 .orphan-current { border: 1px solid var(--line); border-radius: 12px; background: var(--cream); }
 .operator-share-placeholder p { color: var(--ink-60); }
 
@@ -10519,18 +10564,6 @@ onBeforeUnmount(function () {
 }
 .import-box .tip {
   color: var(--ink-60);
-}
-.backup-file-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.import-target {
-  color: var(--ink-60);
-}
-.import-target strong {
-  color: var(--ink);
-}
-.import-target small {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--theme-accent-text, var(--accent-strong));
 }
 .import-box textarea {
   border: 1.5px solid var(--line);

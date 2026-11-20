@@ -1,60 +1,60 @@
 <template>
   <DataExchangeDialog :open="open" v-model:tab="tab" :account-name="accountName" :game="game" :busy="loading || committing || exporting" :before-close="closeDialog" @update:open="emit('update:open', $event)">
     <template #import>
-      <div ref="importContent" class="exchange-content" tabindex="-1">
-        <div class="actions">
-          <button ref="importButton" class="primary" type="button" :disabled="!canImport || loading || committing || !!submittedIntent" @click="fileInput.value = ''; fileInput.click()">选择备份文件</button>
-          <input ref="fileInput" class="file-input" type="file" aria-label="选择招募记录 JSON" accept=".json,application/json" :disabled="!canImport || loading || committing || !!submittedIntent" @change="selectFile">
-          <button v-if="showFilePreviewFallback" type="button" :disabled="!canImport || committing" @click="generatePreview">预览这个文件</button>
-        </div>
-        <ImportGuide :sources="importSources" />
-        <p v-if="readOnly" class="hint">当前账号暂不能导入，仍可导出。</p>
-        <template v-if="success"><p class="success-mark" aria-hidden="true"><CircleCheck :size="32" aria-hidden="true" /></p><h3>已导入 {{ success.events }} 条招募记录</h3><p v-if="success.other">另有 {{ success.other }} 项批次或档案信息已导入。</p><p v-if="success.duplicates">{{ success.duplicates }} 项已有内容未重复添加。</p><p v-if="success.skipped">{{ success.skipped }} 项内容未导入，已保留现有档案。</p><button type="button" :disabled="committing" @click="closeDialog() && emit('update:open', false)">返回招募档案</button></template>
-        <template v-else-if="!pasteMode">
-          <p v-if="filename" class="file-caption">{{ filename }}<span>{{ game }} · 目标：{{ accountName || '当前游戏账号' }}</span></p>
-          <p v-if="documentData?.source_account?.account_id && documentData.source_account.account_id !== accountId" class="hint">备份来自另一游戏账号，请确认要导入到此账号。</p>
-          <p v-if="loading" class="loading-message" role="status">正在核对文件中的招募记录…</p>
-          <form v-if="documentData" @submit.prevent="generatePreview">
-            <label v-if="!recordsOnly" class="restore-option">恢复状态<select v-model="options.state_strategy" :disabled="!canImport || loading || committing || !!submittedIntent"><option value="keep_current">保留当前状态（空档案使用备份状态）</option><option value="use_backup">使用备份中的进度、基准与心愿</option></select></label>
-            <div v-if="options.confirm_count_change || preview?.items.some(item => item.status === 'count_overlap') || (!recordsOnly && options.state_strategy === 'use_backup' && preview?.items.some(item => item.entity_type === 'state' && item.status === 'add'))" class="overlap-warning"><p>{{ !recordsOnly && options.state_strategy === 'use_backup' ? '备份进度将替换现有进度，同时替换心愿密探，请核对抽数与选择变化。' : '部分记录可能已计入现有抽数，请先核对下方明细。' }}</p><label class="check"><input v-model="options.confirm_count_change" type="checkbox" :disabled="!canImport || loading || committing || !!submittedIntent">{{ !recordsOnly && options.state_strategy === 'use_backup' ? '我已核对，确认使用备份进度、心愿及本次抽数变化' : '我已核对，确认这些记录不会重复计数' }}</label></div>
-            <button v-if="!loading && (!preview || expired) && !submittedIntent && !showFilePreviewFallback" type="submit" :disabled="!canImport || committing">{{ expired ? '更新预览' : '重新核对' }}</button>
-          </form>
-          <section v-if="preview" class="preview" aria-label="导入预览">
-            <p class="hint">确认导入后才会写入当前账号，请先核对抽数和档案变化。</p>
-            <div class="import-summary"><div><strong>{{ eventCount }}</strong><span>条新增记录</span></div><div><strong>{{ duplicateEvents }}</strong><span>条已有记录</span></div></div>
-            <p v-if="otherCount" class="hint">另有 {{ otherCount }} 项批次或档案信息将导入。</p>
-            <p class="total-change">已知累计抽数 <span>{{ preview.current_known_total }} <span aria-label="变为">→</span> <strong>{{ preview.candidate_known_total }}</strong> 抽</span></p>
-            <p v-if="!preview.stats.added && !preview.stats.conflicts && !preview.stats.skipped" class="hint">这些记录已在档案中，无需再次导入。</p>
-            <p v-if="preview.stats.conflicts || preview.stats.skipped" class="hint">{{ preview.stats.conflicts }} 项冲突 · {{ preview.stats.skipped }} 项跳过；保留现有内容。</p>
-            <ul v-if="preview.risks.length" class="risks"><li v-for="risk in preview.risks" :key="risk">{{ risk }}</li></ul>
-            <p v-if="!preview.can_commit" class="error" role="alert">请先处理需要确认的内容。</p>
-            <p v-if="expired" class="error" role="status">预览已过期，请更新后确认。</p>
-            <h3 class="list-title">{{ showAll ? '全部导入明细' : '本次导入内容' }}</h3>
-            <ol class="preview-items"><li v-for="item in visibleItems" :key="item.entity_type + ':' + item.id"><div><strong>{{ itemName(item) }}</strong><span>{{ statusLabel(item.status) }}</span></div><p v-if="item.status !== 'add' && item.status !== 'duplicate'">{{ item.reason }}</p></li></ol>
-            <button v-if="preview.items.length > 5" class="text-button" type="button" :aria-expanded="showAll" @click="showAll = !showAll; previewPage = 0">{{ showAll ? '收起明细' : '查看全部 ' + preview.items.length + ' 项明细' }}</button>
-            <div v-if="showAll && preview.items.length > 50" class="actions"><button type="button" :disabled="previewPage === 0" @click="previewPage--">上一页</button><span>{{ previewPage + 1 }} / {{ Math.ceil(preview.items.length / 50) }}</span><button type="button" :disabled="(previewPage + 1) * 50 >= preview.items.length" @click="previewPage++">下一页</button></div>
-          </section>
-          <div v-if="submittedIntent?.status === 'retry'" class="retry-intent" role="status"><p>正在等待确认导入结果，请查询本次结果，无需重新上传。</p><button type="button" :disabled="!canImport || committing" @click="retryCommit">{{ committing ? '正在确认结果…' : '重试上次导入' }}</button></div>
-        </template>
-        <p v-if="tab === 'import' && error" ref="errorPanel" class="error" role="alert" tabindex="-1">{{ error }}</p>
-        <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
-        <ImportMoreOptions :open="pasteHelpActive || undefined" @toggle="pasteHelpActive && ($event.currentTarget.open = true)">
-          <div class="actions">
-            <button type="button" :aria-pressed="pasteMode" :disabled="!canImport || loading || committing || !!submittedIntent" @click="editPaste">粘贴内容</button>
-            <button v-if="pastedText && !pasteMode && !submittedIntent" class="text-button" type="button" :disabled="loading || committing" @click="editPaste">修改粘贴内容</button>
+      <input ref="fileInput" class="file-input" type="file" aria-label="选择招募记录 JSON" accept=".json,application/json"
+        :disabled="!canImport || loading || committing || !!submittedIntent" @change="selectFile">
+      <div ref="importContent" tabindex="-1">
+        <BackupImportPanel ref="importButton" feature="招募" :account-name="accountName" :filename="filename" :source-name="documentData?.source_account?.name"
+          :sources="importSources" :done="importSuccess" :disabled="!canImport || loading || committing || !!submittedIntent"
+          @choose="fileInput.value = ''; fileInput.click()" @again="restartImport">
+          <template #intro><p v-if="readOnly" class="backup-import-hint">当前账号暂不能导入，仍可导出。</p></template>
+          <p v-if="loading && !committing" role="status">正在核对文件中的招募记录…</p>
+          <template v-if="!pasteMode && !success">
+            <div v-if="preview" class="preview recruitment-import-preview">
+              <BackupImportSummary :counts="[['新增记录', eventCount], ['已有记录', duplicateEvents], ['冲突或跳过', preview.stats.conflicts + preview.stats.skipped]]">确认导入后才会写入当前账号，请先核对抽数和档案变化。</BackupImportSummary>
+              <p class="total-change">已知累计抽数 <span>{{ preview.current_known_total }} <span aria-label="变为">→</span> <strong>{{ preview.candidate_known_total }}</strong> 抽</span></p>
+              <p v-if="otherCount" class="backup-import-hint">另有 {{ otherCount }} 项批次或档案信息将导入。</p>
+              <p v-if="!preview.stats.added && !preview.stats.conflicts && !preview.stats.skipped" class="backup-import-hint">这些记录已在档案中，无需再次导入。</p>
+              <ul v-if="preview.risks.length" class="risks"><li v-for="risk in preview.risks" :key="risk">{{ risk }}</li></ul>
+              <p v-if="!preview.can_commit" class="error" role="alert">请先处理需要确认的内容。</p>
+            </div>
+            <div v-if="documentData && (options.confirm_count_change || preview?.items.some(item => item.status === 'count_overlap') || (!recordsOnly && options.state_strategy === 'use_backup' && preview?.items.some(item => item.entity_type === 'state' && item.status === 'add')))" class="backup-import-warning">
+              <p>{{ !recordsOnly && options.state_strategy === 'use_backup' ? '备份进度将替换现有进度，同时替换心愿密探，请核对抽数与选择变化。' : '部分记录可能已计入现有抽数，请先核对下方明细。' }}</p>
+              <label class="check"><input v-model="options.confirm_count_change" type="checkbox" :disabled="!canImport || loading || committing || !!submittedIntent">{{ !recordsOnly && options.state_strategy === 'use_backup' ? '我已核对，确认使用备份进度、心愿及本次抽数变化' : '我已核对，确认这些记录不会重复计数' }}</label>
+            </div>
+            <BackupImportDetails v-if="preview">
+              <ol class="preview-items"><li v-for="item in visibleItems" :key="item.entity_type + ':' + item.id"><div><strong>{{ itemName(item) }}</strong><span>{{ statusLabel(item.status) }}</span></div><p v-if="item.status !== 'add' && item.status !== 'duplicate'">{{ item.reason }}</p></li></ol>
+              <div v-if="preview.items.length > 50" class="backup-import-actions"><button class="backup-import-text" type="button" :disabled="previewPage === 0" @click="previewPage--">上一页</button><span>{{ previewPage + 1 }} / {{ Math.ceil(preview.items.length / 50) }}</span><button class="backup-import-text" type="button" :disabled="(previewPage + 1) * 50 >= preview.items.length" @click="previewPage++">下一页</button></div>
+            </BackupImportDetails>
+            <ImportMoreOptions v-if="documentData && !recordsOnly && preview" summary="冲突时怎么处理">
+              <label>恢复状态<select v-model="options.state_strategy" :disabled="!canImport || loading || committing || !!submittedIntent"><option value="keep_current">保留当前状态（空档案使用备份状态）</option><option value="use_backup">使用备份中的进度、基准与心愿</option></select></label>
+            </ImportMoreOptions>
+            <div v-if="submittedIntent?.status === 'retry'" class="backup-import-actions" role="status"><p>正在等待确认导入结果，请查询本次结果，无需重新上传。</p><button class="backup-import-text" type="button" :disabled="!canImport || committing" @click="retryCommit">{{ committing ? '正在确认结果…' : '重试上次导入' }}</button></div>
+          </template>
+          <div v-if="(tab === 'import' && error) || expired" class="backup-import-actions">
+            <p v-if="error" ref="errorPanel" class="error" role="alert" tabindex="-1">{{ error }}</p>
+            <p v-else role="status">预览已过期，请重试后确认。</p>
+            <button v-if="documentData && !submittedIntent && (!preview || expired)" class="backup-import-text" type="button" :disabled="!canImport || loading || committing" @click="generatePreview">重试</button>
           </div>
-          <form v-if="pasteMode" id="recruitment-paste-form" @submit.prevent="previewPaste">
-            <label class="paste-label" for="recruitment-paste-input">备份内容</label>
-            <p id="recruitment-paste-hint">请粘贴 AI 返回的完整内容。</p>
-            <textarea id="recruitment-paste-input" ref="pasteInput" v-model="pastedText" class="paste-input" aria-describedby="recruitment-paste-hint" :disabled="loading || committing" spellcheck="false" autocomplete="off" placeholder="在这里粘贴备份内容" />
-            <button type="submit" :disabled="!canImport || !pastedText.trim() || loading || committing || !!submittedIntent">{{ loading ? '正在核对…' : '核对内容' }}</button>
-          </form>
-          <button class="text-button" type="button" :disabled="!game || guideLoading" @click="downloadGuide">{{ guideLoading ? '正在获取规范…' : '获取 AI 导入规范' }}</button>
-          <ImportGuide :sources="importSources" detail />
-        </ImportMoreOptions>
+          <p v-if="notice && !success" class="action-feedback" role="status">{{ notice }}</p>
+          <ImportMoreOptions :open="pasteHelpActive || undefined" @toggle="pasteHelpActive && ($event.currentTarget.open = true)">
+            <div class="backup-import-actions">
+              <button class="btn ghost" type="button" :aria-pressed="pasteMode" :disabled="!canImport || loading || committing || !!submittedIntent" @click="editPaste">粘贴内容</button>
+              <button v-if="pastedText && !pasteMode && !submittedIntent" class="backup-import-text" type="button" :disabled="loading || committing" @click="editPaste">修改粘贴内容</button>
+            </div>
+            <form v-if="pasteMode" id="recruitment-paste-form" @submit.prevent="previewPaste">
+              <label for="recruitment-paste-input">备份内容</label>
+              <p id="recruitment-paste-hint">请粘贴 AI 返回的完整内容。</p>
+              <textarea id="recruitment-paste-input" ref="pasteInput" v-model="pastedText" class="paste-input" aria-describedby="recruitment-paste-hint" :disabled="loading || committing" spellcheck="false" autocomplete="off" placeholder="在这里粘贴备份内容" />
+              <button class="btn ghost" type="submit" :disabled="!canImport || !pastedText.trim() || loading || committing || !!submittedIntent">{{ loading ? '正在核对…' : '核对内容' }}</button>
+            </form>
+            <button class="backup-import-text" type="button" :disabled="!game || guideLoading" @click="downloadGuide">{{ guideLoading ? '正在获取规范…' : '获取 AI 导入规范' }}</button>
+            <ImportGuide :sources="importSources" detail />
+          </ImportMoreOptions>
+        </BackupImportPanel>
       </div>
     </template>
-    <template #import-footer><button class="primary" type="button" :disabled="pasteMode || !!success || !canImport || !preview?.can_commit || !preview?.stats.added || expired || loading || committing || !!submittedIntent" @click="commit">{{ committing ? '正在导入…' : eventCount ? '确认导入 ' + eventCount + ' 条' : '确认导入' }}</button></template>
+    <template #import-footer><button v-if="!pasteMode && !success && preview" class="primary" type="button" :disabled="!canImport || !preview.can_commit || !preview.stats.added || expired || loading || committing || !!submittedIntent" @click="commit">{{ committing ? '正在导入…' : '确认导入 ' + (eventCount || preview.stats.added) + ' 条' }}</button></template>
     <template #export>
       <BackupExportPanel title="招募备份" contents="抽卡记录和进度" :notice="exportNotice">
         <template #feedback>
@@ -73,7 +73,6 @@
 </template>
 
 <script setup>
-import { CircleCheck } from '@lucide/vue'
 import DataExchangeDialog from '../../components/DataExchangeDialog.vue'
 import ImportGuide from '../../components/ImportGuide.vue'
 import ImportMoreOptions from '../../components/ImportMoreOptions.vue'
@@ -85,17 +84,24 @@ import { usePendingBackupRestore } from '../../utils/pendingBackupRestore.js'
 import { downloadFile, MAX_IMPORT_BYTES, recruitmentCsv } from './rules.js'
 import { backupDownloadNotice, backupFilename, unwrapFullBackup } from '../../utils/backupFile.js'
 import BackupExportPanel from '../../components/BackupExportPanel.vue'
+import BackupImportPanel from '../../components/BackupImportPanel.vue'
+import BackupImportSummary from '../../components/BackupImportSummary.vue'
+import BackupImportDetails from '../../components/BackupImportDetails.vue'
 const props = defineProps({ open: Boolean, accountId: String, accountName: String, identity: String, revision: Number, game: String, readOnly: Boolean, busy: Boolean, contextVersion: Number, requestVersion: Number })
 const emit = defineEmits(['committed', 'busy', 'update:open'])
 const documentData = ref(null), filename = ref(''), preview = ref(null), previewPage = ref(0), loading = ref(false), exporting = ref(false), committing = ref(false), error = ref(''), notice = ref(''), fileInput = ref(null), errorPanel = ref(null), expired = ref(false)
 const pasteMode = ref(false), pastedText = ref(''), pasteInput = ref(null)
-const tab = ref('import'), exportNotice = ref(''), importContent = ref(null), importButton = ref(null), success = ref(null), showAll = ref(false)
+const tab = ref('import'), exportNotice = ref(''), importContent = ref(null), importButton = ref(null), success = ref(null)
 const importSources = [
   { title: '本站招募备份', from: '在招募页「导入/导出 → 导出」下载完整备份。' },
   { title: 'AI 整理的抽卡记录', from: '把导入规范和抽卡截图或表格一起交给 AI，再选择它生成的备份文件或粘贴内容。' },
 ]
 const pasteHelpActive = computed(() => pasteMode.value || !!pastedText.value.trim())
-watch(() => props.open, open => { if (open) tab.value = 'import'; else exportNotice.value = '' })
+watch(() => props.open, open => {
+  if (!open) { exportNotice.value = ''; return }
+  tab.value = 'import'
+  if (documentData.value && !preview.value && !submittedIntent.value) void generatePreview()
+})
 function closeDialog() {
   if (loading.value || committing.value || exporting.value) return false
   if (!submittedIntent.value) { clearPreview(); loading.value = false }
@@ -103,7 +109,7 @@ function closeDialog() {
 }
 function openPaste() {
   if (!canImport.value || loading.value || committing.value || submittedIntent.value) return
-  clearPreview(); documentData.value = null; success.value = null; error.value = ''; notice.value = ''
+  clearPreview(); documentData.value = null; success.value = null; error.value = ''; notice.value = ''; filename.value = ''
   pasteMode.value = true; tab.value = 'import'; emit('update:open', true)
 }
 async function editPaste() {
@@ -123,8 +129,15 @@ const recordsOnly = computed(() => documentData.value?.schema === RECORD_IMPORT_
 const options = reactive({ state_strategy: 'keep_current', confirm_count_change: false })
 const canExport = computed(() => !!props.identity && !!props.accountId && !props.busy)
 const canImport = computed(() => canExport.value && !props.readOnly)
-const showFilePreviewFallback = computed(() => !!documentData.value && !pastedText.value && !preview.value &&
-  !error.value && !loading.value && !committing.value && !exporting.value && !submittedIntent.value && !success.value)
+const importSuccess = computed(() => success.value ? [
+  `已导入 ${success.value.events} 条招募记录`,
+  success.value.other ? `另有 ${success.value.other} 项批次或档案信息` : '',
+  success.value.duplicates ? `${success.value.duplicates} 项已有内容未重复添加` : '',
+  success.value.skipped ? `跳过 ${success.value.skipped} 项` : '',
+].filter(Boolean).join(' · ') : '')
+function restartImport() {
+  success.value = null; filename.value = ''; notice.value = ''; error.value = ''
+}
 async function openImport() {
   if (!canImport.value) return
   tab.value = 'import'
@@ -137,7 +150,7 @@ const deletedEventIds = computed(() => new Set(documentData.value?.events.filter
 const eventCount = computed(() => preview.value?.items.filter(item => item.entity_type === 'event' && item.status === 'add' && !deletedEventIds.value.has(item.id)).length || 0)
 const duplicateEvents = computed(() => preview.value?.items.filter(item => item.entity_type === 'event' && item.status === 'duplicate').length || 0)
 const otherCount = computed(() => (preview.value?.stats.added || 0) - eventCount.value)
-const visibleItems = computed(() => preview.value?.items.slice(showAll.value ? previewPage.value * 50 : 0, showAll.value ? (previewPage.value + 1) * 50 : 5) || [])
+const visibleItems = computed(() => preview.value?.items.slice(previewPage.value * 50, (previewPage.value + 1) * 50) || [])
 const itemNames = computed(() => {
   const names = new Map(), document = documentData.value
   if (!document) return names
@@ -158,7 +171,11 @@ watch([() => props.identity, () => props.accountId, () => props.contextVersion, 
   emit('update:open', false); success.value = null; pasteMode.value = false; pastedText.value = ''; clearPreview(); submittedIntent.value = null; documentData.value = null; filename.value = ''; error.value = ''; notice.value = ''; loading.value = false; committing.value = false; exporting.value = false; options.state_strategy = 'keep_current'; options.confirm_count_change = false
   if (fileInput.value) fileInput.value.value = ''
 })
-watch([() => props.revision, () => props.requestVersion, () => props.readOnly], () => { clearPreview(); loading.value = false })
+watch([() => props.revision, () => props.requestVersion, () => props.readOnly], () => {
+  const hadPreview = !!preview.value || loading.value
+  clearPreview(); loading.value = false
+  if (hadPreview && documentData.value) error.value = '档案已变化，请重试预览。'
+})
 watch([() => options.state_strategy, () => options.confirm_count_change], async () => {
   clearPreview(); submittedIntent.value = null
   if (props.open && documentData.value && !loading.value) await generatePreview()
@@ -169,9 +186,10 @@ function selectFile(event) {
 }
 async function readBackupFile(input) {
   if (committing.value || submittedIntent.value) return
-  clearPreview(); documentData.value = null; notice.value = ''; error.value = ''; success.value = null; showAll.value = false
+  clearPreview(); documentData.value = null; notice.value = ''; error.value = ''; success.value = null
   const token = capture()
   if (!input || !canImport.value) return
+  filename.value = input.name
   try {
     const file = await unwrapFullBackup(input, 'recruitment')
     if (!matches(token)) return
@@ -292,8 +310,24 @@ onScopeDispose(() => { alive = false; generation++; clearTimeout(expiryTimer) })
 </script>
 
 <style scoped>
-.exchange-content{min-width:0;font-size:14px;line-height:1.7;overflow-wrap:anywhere}.exchange-content p{margin:10px 0}h3{font-family:var(--font-s)}button,select{font:inherit}button{cursor:pointer}button{min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:10px 16px}button:disabled{opacity:.5;cursor:not-allowed}button.primary{background:var(--tea);color:var(--on-strong);border-color:var(--tea)}button.text-button{border:0;background:transparent;padding:4px 0;color:var(--theme-strong-text, var(--tea));text-decoration:underline;text-underline-offset:4px}.hint,.file-caption{color:var(--ink-60)}.file-input{display:none}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:16px 0 10px}.file-caption{font-size:13px}.file-caption span{display:block}.restore-option{display:flex;flex-direction:column;gap:6px;margin:18px 0;font-size:13px}.check{display:flex;align-items:flex-start;gap:8px;font-size:13px}.check input{margin-top:5px;flex:none}.import-summary{display:flex;margin:24px 0 18px}.import-summary strong{display:block;font-variant-numeric:tabular-nums;font-weight:500}.import-summary span{font-size:13px;color:var(--ink-60)}.total-change{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;padding:12px 14px;background:var(--cream);border-radius:10px;font-variant-numeric:tabular-nums}.list-title{font-size:15px;margin:24px 0 6px}.preview-items{list-style:none;padding:0;margin:0 0 12px}.preview-items li{padding:12px 0;border-bottom:1px solid var(--line)}.preview-items li>div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px}.preview-items strong{font-weight:500}.preview-items p{font-size:13px;margin:6px 0 0}.preview-items span{color:var(--ink-60);font-size:13px;white-space:nowrap}.error,.risks{color:var(--theme-danger-text, var(--rouge))}.risks{padding-left:20px;font-size:13px}.overlap-warning{background:var(--cream);border-inline-start:3px solid var(--rouge);padding:12px}.success-mark{color:var(--theme-strong-text, var(--tea));font-size:36px}.restore-option select{min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--cream);color:var(--ink);padding:10px;min-width:0;max-width:100%}.retry-intent{margin-top:18px}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}
-.paste-label{display:block;margin-top:18px;font-weight:600}.paste-input{display:block;box-sizing:border-box;width:100%;resize:vertical;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--cream);color:var(--ink);font:14px/1.6 monospace}
+.recruitment-import-preview { display: grid; gap: 8px; }
+.recruitment-import-preview p { margin: 0; }
+button { min-height: 44px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 10px 16px; font: inherit; cursor: pointer; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.primary { background: var(--tea); color: var(--on-strong); border-color: var(--tea); }
+button:focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
+.hint { color: var(--ink-60); }
+.file-input { display: none; }
+.total-change { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; padding: 12px 14px; background: var(--cream); border-radius: 10px; font-variant-numeric: tabular-nums; }
+.preview-items { list-style: none; padding: 0; margin: 0 0 12px; }
+.preview-items li { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.preview-items li > div { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; }
+.preview-items strong { font-weight: 500; }
+.preview-items p { font-size: 13px; margin: 6px 0 0; }
+.preview-items span { color: var(--ink-60); font-size: 13px; }
+.error, .risks { color: var(--theme-danger-text, var(--rouge)); }
+.risks { padding-left: 20px; font-size: 13px; }
+.paste-input { display: block; margin-block: 8px; }
 </style>
 <style scoped src="./recruitmentExchangeDesktop.css"></style>
 <style scoped src="./recruitmentExchangeMobile.css"></style>

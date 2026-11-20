@@ -69,63 +69,45 @@
 
           <DataExchangeDialog v-model:open="showArchive" v-model:tab="inventoryExchangeTab" :account-name="currentAccountName" :game="agentGameFilter" :busy="importing || exporting" :before-close="beforeCloseInventoryExchange" @close="discardInventoryImport">
             <template #import>
-              <div class="inventory-exchange-content">
-                <p class="tip inventory-import-guide">
-                  不一定需要文件：也可以
-                  <button class="inventory-import-link" type="button" :disabled="stockEntryDisabled || inventoryExchangeConfirmingClose" @click="followInventoryImportGuide()">手动盘点</button>
-                  或
-                  <router-link :to="maayuanSyncRoute" custom v-slot="{ href, navigate }">
-                    <a class="inventory-import-link" :href="href" :aria-disabled="importing || inventoryExchangeConfirmingClose" @click.prevent="followInventoryImportGuide(navigate)">用 MaaYuan 同步</a>
-                  </router-link>。
-                </p>
-                <button type="button" class="btn primary file-label" :disabled="inventoryImportInputDisabled" @click="inventoryImportFile.value = ''; inventoryImportFile.click()">选择备份文件</button>
-                <input ref="inventoryImportFile" type="file" hidden accept=".json,application/json" :disabled="inventoryImportInputDisabled" @change="onFilePick" />
-                <ImportGuide :sources="inventoryImportSources" />
-                <p v-if="inventoryBackupPreview && !importResult" class="action-feedback" role="status">
-                  恢复预览：将恢复到「{{ currentAccountName }}」· {{ agentGameFilter }}，含 {{ inventoryBackupPreview.snapshots }} 份库存快照及 {{ inventoryBackupPreview.rewards }} 条奖励流水。
-                </p>
-                <p v-if="importFilename && importText.trim() && !importResult" class="tip" role="status">已读取「{{ importFilename }}」</p>
-                <p
-                  v-if="importError"
-                  id="inventory-import-error"
-                  class="import-error"
-                  role="alert"
-                >
-                  {{ importError }}
-                </p>
-                <div v-if="importResult" class="import-result">
-                  导入完成：接受 {{ importResult.accepted }} 条 · 重复
-                  {{ importResult.duplicates }} 条
-                  <span v-if="importResult.history_only">
-                    · 仅历史 {{ importResult.history_only }} 条</span
-                  >
-                  <span v-if="importResult.superseded">
-                    · 已归档 {{ importResult.superseded }} 条</span
-                  >
-                  <button class="ok" type="button" :disabled="importing || loadingExample" @click="afterImport">刷新库存</button>
+              <input ref="inventoryImportFile" type="file" hidden accept=".json,application/json" :disabled="inventoryImportInputDisabled" @change="onFilePick" />
+              <BackupImportPanel feature="库存" :account-name="currentAccountName" :filename="importFilename || (inventoryFileSummary ? '粘贴的备份内容' : '')"
+                :source-name="inventoryFileSummary?.sourceName" :target-label="inventoryFileSummary?.targetLabel"
+                :sources="inventoryImportSources" :disabled="inventoryImportInputDisabled" :done="inventoryImportSuccess"
+                :done-title="inventoryFileSummary?.targetLabel ? '已导入到文件指定的账号' : ''"
+                @choose="inventoryImportFile.value = ''; inventoryImportFile.click()" @again="restartInventoryImport">
+                <template #intro>
+                  <p class="backup-import-hint">不一定需要文件：也可以
+                    <button class="backup-import-text" type="button" :disabled="stockEntryDisabled || inventoryExchangeConfirmingClose" @click="followInventoryImportGuide()">手动盘点</button>
+                    或
+                    <router-link :to="maayuanSyncRoute" custom v-slot="{ href, navigate }">
+                      <a class="backup-import-text" :href="href" :aria-disabled="importing || inventoryExchangeConfirmingClose" @click.prevent="followInventoryImportGuide(navigate)">用 MaaYuan 同步</a>
+                    </router-link>。
+                  </p>
+                </template>
+                <template v-if="inventoryFileSummary && !importResult">
+                  <BackupImportSummary :counts="[['库存快照', inventoryFileSummary.snapshots], ['奖励流水', inventoryFileSummary.rewards]]">确认导入后才会写入，请核对目标账号和记录数量。</BackupImportSummary>
+                  <p id="inventory-import-tip" class="backup-import-warning">完整库存快照可能覆盖已有数量，请先备份。</p>
+                  <BackupImportDetails v-if="inventoryFileSummary.accounts.length">
+                    <ul><li v-for="account in inventoryFileSummary.accounts" :key="account">{{ account }}</li></ul>
+                  </BackupImportDetails>
+                </template>
+                <p v-if="readingImportFile" role="status">正在核对备份…</p>
+                <div v-if="importError" class="backup-import-actions">
+                  <p id="inventory-import-error" class="import-error" role="alert">{{ importError }}</p>
+                  <button v-if="inventoryFileRetry && !inventoryFileSummary" class="backup-import-text" type="button" :disabled="inventoryImportInputDisabled" @click="readBackupFile(...inventoryFileRetry)">重试</button>
                 </div>
                 <ImportMoreOptions :open="importPasteActive || undefined" @toggle="importPasteActive && ($event.currentTarget.open = true)">
-                  <textarea
-                    id="inventory-import-json"
-                    v-model="importText"
-                    :disabled="inventoryImportInputDisabled"
-                    aria-label="库存备份内容"
-                    :aria-invalid="!!importError"
-                    :aria-describedby="importError ? 'inventory-import-tip inventory-import-error' : 'inventory-import-tip'"
-                    autocomplete="off"
-                    placeholder="也可以把备份文件内容粘贴到这里"
-                    @input="importFilename = ''; importError = ''; importResult = null"
-                  ></textarea>
-                  <button class="btn ghost" type="button" :disabled="inventoryImportInputDisabled" aria-describedby="inventory-import-example-tip" @click="fillExample">
-                    {{ loadingExample ? "加载中…" : "示例导入" }}
-                  </button>
+                  <textarea id="inventory-import-json" v-model="importText" :disabled="inventoryImportInputDisabled" aria-label="库存备份内容"
+                    :aria-invalid="!!importError" :aria-describedby="importError ? 'inventory-import-error' : undefined"
+                    autocomplete="off" placeholder="也可以把备份文件内容粘贴到这里" @input="onInventoryPasteInput"></textarea>
+                  <button v-if="importText.trim() && !inventoryFileSummary && !importFilename" type="button" class="btn ghost" :disabled="inventoryImportInputDisabled" @click="previewInventoryPaste">核对内容</button>
+                  <button class="btn ghost" type="button" :disabled="inventoryImportInputDisabled" aria-describedby="inventory-import-example-tip" @click="fillExample">{{ loadingExample ? "加载中…" : "示例导入" }}</button>
                   <p id="inventory-import-example-tip">请勿将示例导入实际库存，确认后会写入账号数据。</p>
                   <ImportGuide :sources="inventoryImportSources" detail />
                 </ImportMoreOptions>
-                <p v-show="importText.trim() && !importResult" id="inventory-import-tip" class="tip">确认导入会直接写入，请核对文件中的各目标账号与数量；完整库存快照可能覆盖已有数量，请先备份。</p>
-              </div>
+              </BackupImportPanel>
             </template>
-            <template #import-footer><button class="btn primary" type="button" :disabled="!auth.isLoggedIn || editingStock || inventoryImportInputDisabled || !importText.trim()" @click="doImport">{{ importing ? '导入中…' : '确认导入' }}</button></template>
+            <template #import-footer><button v-if="inventoryFileSummary && !importResult" class="btn primary" type="button" :disabled="!auth.isLoggedIn || editingStock || inventoryImportInputDisabled" @click="doImport">{{ importing ? '导入中…' : '确认导入 ' + inventoryFileSummary.count + ' 条' }}</button></template>
             <template #export>
               <BackupExportPanel title="库存备份" contents="库存数量和全部奖励流水" :notice="exportNotice">
                 <ImportMoreOptions v-if="accounts.length >= 2" summary="更多下载方式">
@@ -1631,12 +1613,15 @@ import { downloadJson } from '../../utils/downloadFile.js';
 import { usePendingBackupRestore } from '../../utils/pendingBackupRestore.js';
 import { backupDownloadNotice, backupFilename, FULL_BACKUP_MAX_BYTES, unwrapFullBackup } from "../../utils/backupFile.js";
 import BackupExportPanel from "../../components/BackupExportPanel.vue";
+import BackupImportPanel from "../../components/BackupImportPanel.vue";
+import BackupImportSummary from "../../components/BackupImportSummary.vue";
+import BackupImportDetails from "../../components/BackupImportDetails.vue";
 import { TUTORIALS_ENABLED } from "../../config/features.js";
 import { useAccountListUpdates } from '../../store/accountList.js'
 import { usePersistedTab } from "../../utils/persistedTab.js";
 import { batchImageDirective as vBatchImage } from "../../utils/batchImage.js";
 import { xinzhiIconUrl, onXinzhiLoad, fallbackXinzhiIcon } from "../../api/request.js";
-import { ref, computed, nextTick, watch, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, nextTick, watch, onMounted, onBeforeUnmount, shallowRef } from "vue";
 import { useUnsavedChanges } from "../../utils/useUnsavedChanges.js";
 import {
   Archive,
@@ -1895,6 +1880,16 @@ const inventoryImportFile = ref(null);
 const importText = ref("");
 const importFilename = ref("");
 const inventoryBackupPreview = ref(null);
+const inventoryFileSummary = ref(null);
+const inventoryFileRetry = shallowRef(null);
+const inventoryImportSuccess = computed(() => {
+  const result = importResult.value;
+  return result ? [
+    `接受 ${result.accepted ?? 0} 条`, `重复 ${result.duplicates ?? 0} 条`,
+    result.history_only ? `仅历史 ${result.history_only} 条` : "",
+    result.superseded ? `已归档 ${result.superseded} 条` : "",
+  ].filter(Boolean).join(" · ") : "";
+});
 const importPasteActive = computed(() => !importFilename.value && !!importText.value.trim());
 const importError = ref("");
 const importing = ref(false);
@@ -1972,6 +1967,8 @@ function discardInventoryImport() {
   importText.value = "";
   importFilename.value = "";
   inventoryBackupPreview.value = null;
+  inventoryFileSummary.value = null;
+  inventoryFileRetry.value = null;
   importError.value = "";
   importResult.value = null;
 }
@@ -3954,6 +3951,7 @@ async function doImport() {
       : await importInventory(doc);
     if (contextSeq !== inventoryContextSeq) return;
     importResult.value = res || {};
+    void refreshAfterInventoryImport();
   } catch (err) {
     if (contextSeq !== inventoryContextSeq) return;
     importError.value = humanErr(err, "导入失败");
@@ -3962,12 +3960,60 @@ async function doImport() {
   }
 }
 
+function inventoryImportSummary(doc, remapped) {
+  const records = Array.isArray(doc?.records) ? doc.records : [];
+  const accountsById = new Map((Array.isArray(doc?.accounts) ? doc.accounts : []).map(account => [account.id, account.name]));
+  const ids = [...new Set(records.map(record => record?.account_id).filter(Boolean))];
+  const accounts = ids.map(id => accountsById.get(id) || id);
+  return {
+    count: records.length,
+    snapshots: records.filter(record => record?.record_type === "stock_snapshot").length,
+    rewards: records.filter(record => record?.record_type === "reward_delta").length,
+    sourceName: ids.length === 1 ? accountsById.get(ids[0]) : "",
+    targetLabel: !remapped && ids.some(id => id !== accountId.value) ? "将导入到文件中指定的账号，请核对明细。" : "",
+    accounts: remapped ? [currentAccountName.value] : accounts,
+  };
+}
+
+function onInventoryPasteInput() {
+  importFilename.value = "";
+  inventoryFileSummary.value = null;
+  inventoryFileRetry.value = null;
+  importError.value = "";
+  importResult.value = null;
+}
+
+function previewInventoryPaste() {
+  importError.value = "";
+  try {
+    if (inventoryBackupPreview.value && inventoryBackupPreview.value.text !== importText.value) throw new Error("备份内容已修改，请重新选择文件。");
+    const doc = JSON.parse(importText.value);
+    validateInventoryExchangeDocument(doc);
+    inventoryFileSummary.value = inventoryImportSummary(doc, !!inventoryBackupPreview.value);
+  } catch (error) {
+    inventoryFileSummary.value = null;
+    importError.value = error instanceof SyntaxError ? "无法读取备份内容，请核对后重试。" : humanErr(error, "无法核对备份");
+  }
+}
+
+function restartInventoryImport() {
+  discardInventoryImport();
+}
+function refreshAfterInventoryImport() {
+  void reloadCurrent();
+  invalidateAcquiredData();
+  if (activeTab.value === "acquired") void loadAcquired();
+}
+
 function onFilePick(event) {
   return readBackupFile(event?.target?.files?.[0]);
 }
 
 async function readBackupFile(input, guided = false, sourceGame) {
   if (!input || inventoryImportInputDisabled.value) return;
+  discardInventoryImport();
+  importFilename.value = input.name;
+  inventoryFileRetry.value = [input, guided, sourceGame];
   readingImportFile.value = true;
   const contextSeq = inventoryContextSeq, exchangeSeq = inventoryExchangeSeq;
   const current = () => !inventoryDisposed && contextSeq === inventoryContextSeq && exchangeSeq === inventoryExchangeSeq && showArchive.value;
@@ -3989,21 +4035,22 @@ async function readBackupFile(input, guided = false, sourceGame) {
         const file = input.size > FULL_BACKUP_MAX_BYTES ? input : await unwrapFullBackup(input, "inventory", { text: raw, game });
         const content = file === input ? raw : await file.text();
         if (!current()) return;
+        if (!content.trim()) throw new Error("备份文件没有内容，请重新选择。");
+        const doc = JSON.parse(content);
+        validateInventoryExchangeDocument(doc);
         let preview = null;
         if (guided || file !== input) {
-          const doc = JSON.parse(content);
           const [source] = Array.isArray(doc?.accounts) ? doc.accounts : [];
           if (doc?.format !== "myshare-inventory-exchange" || doc.version !== 2 ||
               doc.accounts?.length !== 1 || typeof source?.id !== "string" || !source.id ||
               !Array.isArray(doc.records) || !doc.records.length || doc.records.some(record => record?.account_id !== source.id)) {
             throw new Error("这份库存备份的账号信息不完整，请重新选择。");
           }
-          validateInventoryExchangeDocument(doc);
-          preview = { text: content, target,
-            snapshots: doc.records.filter(record => record.record_type === "stock_snapshot").length,
-            rewards: doc.records.filter(record => record.record_type === "reward_delta").length };
+          preview = { text: content, target };
         }
         inventoryBackupPreview.value = preview;
+        inventoryFileSummary.value = inventoryImportSummary(doc, !!preview);
+        inventoryFileRetry.value = null;
         importText.value = content;
         importFilename.value = input.name;
         importError.value = content.trim() ? "" : "备份文件没有内容，请重新选择。";
@@ -4020,6 +4067,8 @@ async function fillExample() {
   if (inventoryImportInputDisabled.value) return;
   loadingExample.value = true;
   inventoryBackupPreview.value = null;
+  inventoryFileSummary.value = null;
+  inventoryFileRetry.value = null;
   const contextSeq = inventoryContextSeq, exchangeSeq = inventoryExchangeSeq;
   try {
     const res = await fetch(
@@ -4060,14 +4109,6 @@ async function fillExample() {
   } finally {
     if (contextSeq === inventoryContextSeq && exchangeSeq === inventoryExchangeSeq) loadingExample.value = false;
   }
-}
-
-function afterImport() {
-  discardInventoryImport();
-  showArchive.value = false;
-  reloadCurrent();
-  invalidateAcquiredData();
-  if (activeTab.value === "acquired") loadAcquired();
 }
 
 // ---- 导出档案 ----
@@ -4256,75 +4297,12 @@ onBeforeUnmount(function () {
   cursor: not-allowed;
 }
 
-.inventory-exchange-content { min-width: 0; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
-.inventory-exchange-content .tip {
-  color: var(--ink-60);
-}
-.inventory-import-guide { font-size: 13px; }
-.inventory-exchange-content :is(.import-error, .import-result, .import-result .ok) { font-size: 13px; }
-.inventory-import-link {
-  display: inline-block;
-  padding: 0 2px;
-  border: 0;
-  background: transparent;
-  font: inherit;
-  color: var(--theme-strong-text, var(--tea));
-  text-decoration: underline;
-  cursor: pointer;
-}
-.inventory-import-link:is(:disabled, [aria-disabled="true"]) { opacity: 0.45; cursor: not-allowed; }
-@media (hover: none), (pointer: coarse) {
-  .inventory-import-guide { isolation: isolate; }
-  .inventory-import-link { position: relative; }
-  .inventory-import-link:not(:disabled, [aria-disabled="true"])::after {
-    content: "";
-    position: absolute;
-    inset: -11px 0;
-    z-index: -1;
-  }
-}
-.inventory-exchange-content textarea {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 180px;
-  padding: 12px;
-  font: inherit;
-  resize: vertical;
-  border: 1.5px solid var(--line);
-  border-radius: 12px;
-  color: var(--ink);
-  background: var(--paper);
-  outline: none;
-  transition: border-color 0.3s;
-}
-.inventory-exchange-content textarea:focus {
-  border-color: var(--theme-focus, var(--accent));
-}
-.inventory-exchange-content textarea[aria-invalid="true"] {
-  border-color: var(--rouge);
-}
-.inventory-exchange-content button:not(.inventory-import-link) { min-height: 44px; }
-.inventory-exchange-content :is(a, button, input):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 .import-error {
   color: var(--theme-danger-text, var(--rouge));
 }
 .file-label {
   cursor: pointer;
 }
-.import-result {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  color: var(--ink);
-}
-.import-result .ok {
-  border: none;
-  background: var(--tea);
-  color: var(--on-strong);
-  border-radius: 999px;
-  cursor: pointer;
-}
-
 .type-switch {
   background: var(--theme-wash, rgba(73, 59, 44, 0.06));
   border-radius: 12px;

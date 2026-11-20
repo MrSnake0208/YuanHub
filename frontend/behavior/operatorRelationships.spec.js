@@ -92,14 +92,14 @@ it('restore requires preview, defaults to preserve, and account change invalidat
   await wrapper.vm.openBackup(); await flushPromises()
   expect(wrapper.get('[role="dialog"]').text()).toContain('信赖与传闻备份')
   const text = JSON.stringify({ format: 'yuanhub-relationships', schema_version: 1, game: '如鸢', entries: [{ operator_id: 'op', trust: 100, rumors: 2 }] })
-  await wrapper.find('textarea').setValue(text); await button(wrapper, '预览恢复').trigger('click')
+  await wrapper.find('textarea').setValue(text); await button(wrapper, '核对内容').trigger('click')
   expect(patchRelationships).not.toHaveBeenCalled(); expect(wrapper.text()).toContain('将修改 1 个进度值')
   patchRelationships.mockResolvedValueOnce(remote('a', 3, { op: { trust: 0, rumors: 2 } }))
-  await button(wrapper, '确认导入').trigger('click'); await flushPromises()
+  await wrapper.get('.data-exchange-footer-actions button').trigger('click'); await flushPromises()
   expect(patchRelationships.mock.calls[0][1].entries).toEqual({ op: { rumors: 2 } })
-  await wrapper.find('textarea').setValue(text); await button(wrapper, '预览恢复').trigger('click')
+  await wrapper.find('textarea').setValue(text); await button(wrapper, '核对内容').trigger('click')
   await wrapper.setProps({ accountId: 'b' }); await flushPromises()
-  expect(wrapper.find('.relationships-preview').exists()).toBe(false); expect(wrapper.find('textarea').exists()).toBe(false)
+  expect(wrapper.find('.backup-import-summary').exists()).toBe(false); expect(wrapper.find('textarea').exists()).toBe(false)
 })
 const sharedRules = {
   op: { trust_owner_id: 'op', trust: { max: 2000, complete: true, verified_on: '2026-10-22', source: 'fixture', milestones: Array.from({ length: 15 }, (_, i) => ({ at: i < 10 ? (i + 1) * 100 : 1200 + (i - 10) * 200, rewards: [{ item_key: 'coin', name: '测试币', quantity: 1 }] })) }, rumors: null },

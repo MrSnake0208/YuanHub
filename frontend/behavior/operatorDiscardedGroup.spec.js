@@ -281,7 +281,7 @@ it('主观备份预览明确展示养成中到已弃置，预览不写标注', a
     operator_id: 'a', record_id: 'annotation:test', status: 'accepted',
     changes: { growth_state: { before: 'active', after: 'discarded' } }, warnings: [], blocking_errors: [],
   }] })
-  await new DOMWrapper(document.body).findAll('.import-actions button').find(button => button.text() === '校验并预览').trigger('click')
+  await new DOMWrapper(document.body).findAll('.backup-import-flow button').find(button => button.text() === '核对内容').trigger('click')
   await flushPromises()
   expect(new DOMWrapper(document.body).get('.import-change-list').text()).toContain('养成状态养成中 → 已弃置')
   expect(api.putOperatorAnnotation).not.toHaveBeenCalled()

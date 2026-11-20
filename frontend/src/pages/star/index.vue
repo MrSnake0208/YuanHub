@@ -52,34 +52,39 @@
           </div>
           <DataExchangeDialog v-model:open="showArchive" v-model:tab="starExchangeTab" :account-name="selectedHostAccount()?.displayName" :game="accountGame" :busy="starExchangeBusy">
             <template #import>
-              <section class="star-exchange-content star-exchange-import">
-                <button type="button" class="btn primary file-label touch-target" :disabled="!productReady || starExchangeBusy" @click="starImportFile.click()">选择备份文件</button>
-                <input ref="starImportFile" type="file" hidden accept=".json,application/json" :disabled="!productReady || starExchangeBusy" @change="onStarImportFile" />
-                <ImportGuide :sources="starImportSources" />
-                <div v-if="starImportPreview" class="star-exchange-preview">
-                  <dl>
-                    <div><dt>文件</dt><dd>{{ starImportPreview.preview.fileName }}</dd></div>
-                    <div v-if="!starImportPreview.preview.maayuan"><dt>星石</dt><dd>{{ starImportPreview.preview.inventoryCount }} 颗，其中 {{ starImportPreview.preview.plannedCount }} 颗有计划等级</dd></div>
-                    <template v-if="starImportPreview.preview.maayuan">
-                      <div><dt>类型</dt><dd>{{ starImportPreview.preview.sourceLabel }}</dd></div>
-                      <div><dt>目标账号</dt><dd>{{ starImportPreview.preview.accountName }} · {{ starImportPreview.preview.game }}</dd></div>
-                      <div><dt>星石</dt><dd>主星 {{ starImportPreview.preview.counts.main }} 颗 · 辅星 {{ starImportPreview.preview.counts.support }} 颗</dd></div>
-                    </template>
-                    <div><dt>背包</dt><dd>{{ starImportPreview.preview.bag.currentCount ?? '—' }} / {{ starImportPreview.preview.bag.capacity ?? '—' }}</dd></div>
-                    <div><dt>经验星曜</dt><dd>橙 {{ starImportPreview.preview.experience.orange ?? '未知' }} · 紫 {{ starImportPreview.preview.experience.purple ?? '未知' }} · 白 {{ starImportPreview.preview.experience.white ?? '未知' }}</dd></div>
-                  </dl>
-                  <p class="tip">请核对目标账号和预览内容后确认替换。</p>
-                  <p v-if="starImportPreview.preview.maayuan" class="tip">将使用本次识别结果更新当前星石背包和经验星曜。原有佩戴与养成计划按现有保护和继承规则处理。</p>
-                  <p v-if="starImportPreview.preview.alreadySynced" class="tip">本批次或相同完整结果已保存，确认不会重复重建背包。</p>
-                  <p v-if="!starImportPreview.preview.maayuan" class="tip">确认后将替换当前账号的星石背包、养成计划和经验星曜，无法恢复密探佩戴关系或识别原始资料。</p>
+              <input ref="starImportFile" type="file" hidden accept=".json,application/json" :disabled="!productReady || starExchangeBusy" @change="onStarImportFile" />
+              <BackupImportPanel feature="星石" :account-name="selectedHostAccount()?.displayName" :filename="starSelectedFile?.name" :source-name="starImportSourceName"
+                :sources="starImportSources" :full-backup="false" :disabled="!productReady || starExchangeBusy" :done="starImportSuccess"
+                @choose="starImportFile.click()" @again="clearStarFile">
+                <template v-if="starImportPreview">
+                  <BackupImportSummary :counts="starImportPreview.preview.maayuan
+                    ? [['主星', starImportPreview.preview.counts.main], ['辅星', starImportPreview.preview.counts.support]]
+                    : [['星石', starImportPreview.preview.inventoryCount], ['有养成计划', starImportPreview.preview.plannedCount]]">
+                    请核对当前账号，确认后才会替换背包。
+                  </BackupImportSummary>
+                  <div class="backup-import-warning" role="note">
+                    <strong>确认替换背包</strong>
+                    <p v-if="starImportPreview.preview.maayuan">将用识别结果更新背包和经验星曜。原有佩戴与养成计划按现有保护和继承规则处理。</p>
+                    <p v-else>确认后将替换当前账号的星石背包、养成计划和经验星曜，无法恢复密探佩戴关系或识别原始资料。</p>
+                    <p v-if="starImportPreview.preview.alreadySynced">本批次或相同完整结果已保存，确认不会重复重建背包。</p>
+                  </div>
+                  <BackupImportDetails>
+                    <dl class="star-import-details">
+                      <div v-if="starImportPreview.preview.maayuan"><dt>类型</dt><dd>{{ starImportPreview.preview.sourceLabel }}</dd></div>
+                      <div><dt>背包</dt><dd>{{ starImportPreview.preview.bag.currentCount ?? '—' }} / {{ starImportPreview.preview.bag.capacity ?? '—' }}</dd></div>
+                      <div><dt>经验星曜</dt><dd>橙 {{ starImportPreview.preview.experience.orange ?? '未知' }} · 紫 {{ starImportPreview.preview.experience.purple ?? '未知' }} · 白 {{ starImportPreview.preview.experience.white ?? '未知' }}</dd></div>
+                    </dl>
+                  </BackupImportDetails>
+                </template>
+                <p v-if="starExchangeBusy && !starImportPreview" role="status">正在核对备份…</p>
+                <div v-if="starExchangeError" class="backup-import-actions">
+                  <p class="star-exchange-error" role="alert">{{ starExchangeError }}</p>
+                  <button v-if="starImportCanRetry" class="backup-import-text" type="button" :disabled="starExchangeBusy" @click="previewStarFile(starSelectedFile)">重试</button>
                 </div>
-                <p v-if="starExchangeError" class="star-exchange-error" role="alert">{{ starExchangeError }}</p>
-                <ImportMoreOptions>
-                  <ImportGuide :sources="starImportSources" detail />
-                </ImportMoreOptions>
-              </section>
+                <ImportMoreOptions><ImportGuide :sources="starImportSources" detail /></ImportMoreOptions>
+              </BackupImportPanel>
             </template>
-            <template #import-footer><button type="button" class="btn primary" :disabled="!productReady || !starImportPreview || starExchangeBusy" @click="confirmStarImport">{{ starExchangeBusy ? '替换中…' : '确认替换' }}</button></template>
+            <template #import-footer><button v-if="starImportPreview && !starImportSuccess" type="button" class="btn primary" :disabled="!productReady || starExchangeBusy" @click="confirmStarImport">{{ starExchangeBusy ? '替换中…' : '确认导入' }}</button></template>
             <template #export>
               <BackupExportPanel title="星石备份" contents="星石背包、养成计划和经验星曜" :notice="starExportNotice">
                 <template #feedback>
@@ -168,6 +173,9 @@
 import { downloadBlob } from '../../utils/downloadFile.js';
 import { backupDownloadNotice, FULL_BACKUP_MAX_BYTES, unwrapFullBackup } from '../../utils/backupFile.js';
 import BackupExportPanel from '../../components/BackupExportPanel.vue';
+import BackupImportPanel from '../../components/BackupImportPanel.vue';
+import BackupImportSummary from '../../components/BackupImportSummary.vue';
+import BackupImportDetails from '../../components/BackupImportDetails.vue';
 import { accountIdentityVersion, useAccountListUpdates } from '../../store/accountList.js'
 import { normalizeMaaYuanInventory, starImportKind } from './maayuanInventoryImport.js'
 import { assertNoStarImportDraft } from './starImportDraftGuard.js'
@@ -175,7 +183,7 @@ import { previewStarInventoryImport, confirmStarInventoryImport } from '../../ap
 import { relabelStarArchive } from './starArchiveExport.js'
 import { onWorkspaceTabKeydown, onWorkspaceTabFocus } from "../../utils/workspaceTabs.js";
 import { usePersistedTab } from "../../utils/persistedTab.js";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import { Archive, CircleHelp, Check, Plus } from "@lucide/vue";
 import CompactToolHeader from "../../components/CompactToolHeader.vue";
 import ToolTaskPrompt from "../../components/ToolTaskPrompt.vue";
@@ -346,9 +354,13 @@ const starImportSources = [
   { title: "MaaYuan 识别结果", from: "MaaYuan 完整识别后保存的结果文件。游戏截图请用页面上的「导入截图」。" },
 ];
 const starExportNotice = ref("");
-watch(showArchive, () => { starExportNotice.value = ""; });
+watch(showArchive, open => { starExportNotice.value = ""; if (!open) clearStarFile(); });
 const showShare = ref(false);
 const starImportPreview = ref(null);
+const starSelectedFile = shallowRef(null);
+const starImportSourceName = ref("");
+const starImportSuccess = ref("");
+const starImportCanRetry = ref(false);
 const starImportFile = ref(null);
 const starExchangeError = ref("");
 const starExchangeBusy = ref(false);
@@ -573,14 +585,24 @@ async function exportStarArchive() {
     if (selection === starImportSelection) starExchangeBusy.value = false;
   }
 }
-async function onStarImportFile(event) {
+function clearStarFile() {
+  starImportPreview.value = null;
+  starSelectedFile.value = null;
+  starImportSourceName.value = starImportSuccess.value = starExchangeError.value = "";
+  starImportCanRetry.value = false;
+}
+function onStarImportFile(event) {
   const file = event?.target?.files?.[0];
+  if (event?.target) event.target.value = "";
+  return previewStarFile(file);
+}
+async function previewStarFile(file) {
   if (!file || !handle || !productReady.value || starExchangeBusy.value) return;
   const source = handle, context = starContextVersion, identity = accountIdentityVersion;
   const host = selectedHostAccount(), selection = ++starImportSelection;
+  clearStarFile();
+  starSelectedFile.value = file;
   const current = () => !unmounted && source === handle && context === starContextVersion && identity === accountIdentityVersion && selection === starImportSelection && productReady.value;
-  starImportPreview.value = null;
-  starExchangeError.value = "";
   starExchangeBusy.value = true;
   try {
     const text = file.size > FULL_BACKUP_MAX_BYTES ? undefined : await file.text();
@@ -592,6 +614,7 @@ async function onStarImportFile(event) {
     let preview;
     if (starImportKind(raw) === 'backup') {
       preview = await source.previewDataExchangeImport(file);
+      if (current() && typeof raw.accountDisplayName === 'string') starImportSourceName.value = raw.accountDisplayName;
     } else {
       if (!host) throw new Error('请先登录并选择目标游戏账号，再导入 MaaYuan 识别结果。');
       const normalized = await normalizeMaaYuanInventory(raw);
@@ -608,10 +631,10 @@ async function onStarImportFile(event) {
     }
     if (current()) starImportPreview.value = { ...bindStarExchangePreview(preview, accountId.value), context, identity, selection };
   } catch (error) {
+    if (current()) starImportCanRetry.value = true;
     if (current()) starExchangeError.value = error instanceof SyntaxError ? "JSON 无法解析，请检查文件内容后重新选择。" : message(error, "导入档案校验失败，请核对文件后重新选择。");
   } finally {
     if (selection === starImportSelection) starExchangeBusy.value = false;
-    if (event?.target) event.target.value = '';
   }
 }
 async function confirmStarImport() {
@@ -628,7 +651,11 @@ async function confirmStarImport() {
       await assertNoStarImportDraft(bound.accountId, mountRoot.value);
       if (!current()) return;
       const scope = starCloud.ocrRebuildScope();
-      if (scope.generation !== preview.body.expected_generation || scope.revision !== preview.body.expected_revision) throw new Error('预览后背包已变化，请重新选择文件。');
+      if (scope.generation !== preview.body.expected_generation || scope.revision !== preview.body.expected_revision) {
+        starImportPreview.value = null;
+        starImportCanRetry.value = true;
+        throw new Error('预览后背包已变化，请重试预览。');
+      }
       lease = starCloud.beginCompletion(scope);
       // No write before this point. The lease prevents local edits during POST/read/adoption.
       await confirmStarInventoryImport(bound.accountId, preview.body);
@@ -645,8 +672,8 @@ async function confirmStarImport() {
       cloudSyncMessage.value = preview.alreadySynced ? '本次识别结果已保存，未重复重建。' : '识别结果已保存；如有旧计划待继承，请前往养成计划处理。';
     } else await source.confirmDataExchangeImport(preview);
     if (!current()) return;
+    starImportSuccess.value = preview.alreadySynced ? "本批次已保存，未重复重建。" : `已导入 ${preview.inventoryCount} 颗星石。`;
     starImportPreview.value = null;
-    showArchive.value = false;
   } catch (error) {
     if (!current()) return;
     if (lease && (submitted || ![400, 401, 403, 404, 409, 422].includes(Number(error?.status)))) {
@@ -845,18 +872,9 @@ onBeforeUnmount(function () {
   cursor: not-allowed;
   opacity: 0.45;
 }
-.star-exchange-content { min-width: 0; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
-.star-exchange-import.star-exchange-content { margin-top: 0; padding-top: 0; }
-.star-exchange-content p { margin-block: 12px; }
-.star-exchange-content :is(button, input):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
-.star-exchange-import .tip { color: var(--ink-60); }
-.star-exchange-import :is(.tip, .star-exchange-error, dt, dd) { font-size: 13px; }
-.star-exchange-import .file-label { min-height: 44px; cursor: pointer; }
+.star-import-details { margin: 0; }
+.star-import-details dd { margin: 0; }
 .star-exchange-error { color: var(--theme-danger-text, var(--rouge)); }
-.star-exchange-preview { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
-.star-exchange-import .star-exchange-preview { display: block; }
-.star-exchange-preview dt { color: var(--ink-60); }
-.star-exchange-preview dd { color: var(--ink); }
 .star-sync-state {
   color: var(--ink-60);
 }

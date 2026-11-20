@@ -32,34 +32,31 @@
         @trust="draft.trust = $event" @rumors="draft.rumors = $event" @resolve="resolveTrust = $event" @save="saveDraft" @close="cancel" @reload="refresh" />
       <DataExchangeDialog v-model:open="backupOpen" v-model:tab="backupTab" title="信赖与传闻备份" :account-name="accountName" :game="game" :busy="saving" :before-close="cancel">
         <template #import>
-          <div class="relationships relationships-exchange">
-            <div class="relationship-file-actions">
-              <button class="btn primary relationship-file-button" type="button" :disabled="!ready || dirty" @click="backupFileInput.click()">选择备份文件</button>
-              <input ref="backupFileInput" type="file" hidden accept="application/json,.json" :disabled="!ready || dirty" @change="readFile" />
-              <button v-if="importFromFile && importText.trim() && !preview && !localError && !error && !saving && !loading" type="button" :disabled="!ready || dirty || !importText.trim()" @click="prepareImport">预览这个文件</button>
-            </div>
-            <ImportGuide :sources="relationshipImportSources" />
-            <label v-if="importText.trim()"><input v-model="overwrite" type="checkbox" :disabled="saving || dirty" @change="onOverwriteChange" />使用备份覆盖冲突值（默认保留当前记录）</label>
-            <div v-if="preview" class="relationships-preview">
-              <p>恢复到 {{ accountName }} · {{ game }}；将修改 {{ preview.changes }} 个进度值，发现 {{ preview.conflicts }} 个冲突。</p>
-              <p>确认导入后才会更新当前账号的记录。</p>
-              <p>{{ overwrite ? '冲突项采用备份中的值。' : '冲突项保留当前记录，仅补充未记录项。' }}</p>
-              <details v-if="preview.changes"><summary>查看将修改的进度</summary><ul>
+          <input ref="backupFileInput" type="file" hidden accept="application/json,.json" :disabled="!ready || dirty" @change="readFile" />
+          <BackupImportPanel feature="信赖与传闻" :account-name="accountName" :filename="importFilename || (preview ? '粘贴的备份内容' : '')"
+            :sources="relationshipImportSources" :done="notice" :disabled="!ready || dirty" @choose="backupFileInput.click()" @again="clearImport">
+            <template v-if="preview">
+              <BackupImportSummary :counts="[['将修改', preview.changes], ['冲突', preview.conflicts]]">确认后才写入。{{ overwrite ? '冲突项采用备份中的值。' : '冲突项保留当前记录，仅补充未记录项。' }}</BackupImportSummary>
+              <BackupImportDetails v-if="preview.changes"><ul>
                 <template v-for="(fields, id) in preview.entries" :key="id"><li v-for="(next, kind) in fields" :key="id + kind">{{ operatorMap[id]?.name || id }} · {{ labels[kind] }}：{{ value(id, kind) ?? '未记录' }} → {{ next }}</li></template>
-              </ul></details>
-              <button type="button" :disabled="saving" @click="preview = null">取消预览</button>
+              </ul></BackupImportDetails>
+              <ImportMoreOptions summary="冲突时怎么处理">
+                <label><input v-model="overwrite" type="checkbox" :disabled="saving || dirty" @change="prepareImport" />使用备份覆盖冲突值（默认保留当前记录）</label>
+              </ImportMoreOptions>
+            </template>
+            <div v-if="(!editing && localError) || error" class="backup-import-actions">
+              <p role="alert">{{ localError || error }}</p>
+              <button v-if="error && !ready" class="backup-import-text" type="button" :disabled="saving || loading" @click="refresh">重新读取</button>
+              <button v-else-if="localError && importText.trim() && !preview" class="backup-import-text" type="button" :disabled="!ready || dirty" @click="prepareImport">重试</button>
             </div>
-            <p v-if="(!editing && localError) || error" role="alert">{{ localError || error }}</p>
-            <button v-if="error && !ready" type="button" :disabled="saving || loading" @click="refresh">重新读取</button>
-            <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
             <ImportMoreOptions :open="importPasteActive || undefined" @toggle="importPasteActive && ($event.currentTarget.open = true)">
-              <label>备份内容<textarea v-model="importText" rows="4" :disabled="saving || dirty" @input="importFromFile = false; localError = ''; preview = null; fileSequence++" /></label>
-              <button type="button" :disabled="!ready || dirty || !importText.trim()" @click="prepareImport">预览恢复</button>
+              <label>备份内容<textarea v-model="importText" rows="4" :disabled="saving || dirty" @input="importFromFile = false; importFilename = ''; localError = ''; notice = ''; preview = null; fileSequence++" /></label>
+              <button class="btn ghost" type="button" :disabled="!ready || dirty || !importText.trim()" @click="prepareImport">核对内容</button>
               <ImportGuide :sources="relationshipImportSources" detail />
             </ImportMoreOptions>
-          </div>
+          </BackupImportPanel>
         </template>
-        <template #import-footer><button class="btn primary" type="button" :disabled="!ready || !preview?.changes" @click="restore">{{ saving ? '恢复中…' : '确认导入' }}</button></template>
+        <template #import-footer><button v-if="preview && !notice" class="btn primary" type="button" :disabled="!ready || !preview.changes" @click="restore">{{ saving ? '恢复中…' : '确认导入 ' + preview.changes + ' 条' }}</button></template>
         <template #export>
           <BackupExportPanel title="信赖与传闻备份" contents="信赖与传闻记录" :notice="exportNotice">
             <template #feedback>
@@ -83,6 +80,9 @@ import ImportMoreOptions from '../../components/ImportMoreOptions.vue'
 import { downloadBlob } from '../../utils/downloadFile.js'
 import { backupDownloadNotice, backupFilename, unwrapFullBackup } from '../../utils/backupFile.js'
 import BackupExportPanel from '../../components/BackupExportPanel.vue'
+import BackupImportPanel from '../../components/BackupImportPanel.vue'
+import BackupImportSummary from '../../components/BackupImportSummary.vue'
+import BackupImportDetails from '../../components/BackupImportDetails.vue'
 import { useOperatorRelationships } from '../../composables/useOperatorRelationships.js'
 import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
 import { RELATIONSHIP_KINDS, RELATIONSHIP_BACKUP_LIMIT, relationshipOwner, relationshipTrustState, relationshipValue, parseRelationshipValue, makeRelationshipBackup, readRelationshipBackup, previewRelationshipImport } from '../../utils/operatorRelationships.js'
@@ -94,7 +94,7 @@ const rules = computed(() => catalog.value?.operators || {}), records = computed
 const operatorMap = computed(() => Object.fromEntries(props.allOperators.map(item => [item.id, item])))
 const labels = { trust: '信赖值', rumors: '传闻数量' }
 const editing = ref(''), draft = ref({ trust: '', rumors: '' }), baseline = ref({ trust: '', rumors: '' })
-const localError = ref(''), notice = ref(''), importText = ref(''), overwrite = ref(false), preview = ref(null)
+const localError = ref(''), notice = ref(''), importText = ref(''), importFilename = ref(''), overwrite = ref(false), preview = ref(null)
 const relationshipImportSources = [
   { title: '本站信赖与传闻备份', from: '在「更多 → 信赖与传闻备份」的导出页签下载的完整备份。' },
 ]
@@ -128,7 +128,7 @@ async function beforeLeave() {
   if (saving.value) return false
   const key = scope.value.key
   if (!await confirmDiscard() || key !== scope.value.key || saving.value) return false
-  fileSequence++; backupOpen.value = false; editing.value = ''; resolveTrust.value = false; importText.value = ''; importFromFile.value = false; preview.value = null; return true
+  clearImport(); backupOpen.value = false; editing.value = ''; resolveTrust.value = false; return true
 }
 async function edit(id) {
   if (!ready.value || !await beforeLeave()) return
@@ -162,15 +162,20 @@ function download() {
   } catch (err) { localError.value = err.message }
 }
 let fileSequence = 0
+function clearImport() {
+  fileSequence++; importText.value = ''; importFilename.value = ''; importFromFile.value = false
+  preview.value = null; localError.value = ''; notice.value = ''; overwrite.value = false
+}
 function readFile(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
   return readBackupFile(file)
 }
 async function readBackupFile(input) {
-  const key = scope.value.key, sequence = ++fileSequence
-  preview.value = null; localError.value = ''
   if (!input) return
+  clearImport()
+  const key = scope.value.key, sequence = fileSequence
+  importFilename.value = input.name
   try {
     const file = await unwrapFullBackup(input, 'relationships')
     if (key !== scope.value.key || sequence !== fileSequence) return
@@ -191,17 +196,13 @@ function prepareImport() {
     preview.value = { ...previewRelationshipImport(incoming, records.value, rules.value, overwrite.value), key: scope.value.key, revision: data.value.revision }
   } catch (err) { localError.value = err.message }
 }
-function onOverwriteChange() {
-  preview.value = null
-  if (importFromFile.value) prepareImport()
-}
 async function restore() {
   const pending = preview.value
-  if (!pending || pending.key !== scope.value.key || pending.revision !== data.value?.revision) { preview.value = null; return }
-  if (await save(pending.entries, pending.revision) && pending.key === scope.value.key) { importText.value = ''; preview.value = null; notice.value = '信赖与传闻备份已恢复' }
+  if (!pending || pending.key !== scope.value.key || pending.revision !== data.value?.revision) { preview.value = null; localError.value = '档案已变化，请重试预览。'; return }
+  if (await save(pending.entries, pending.revision) && pending.key === scope.value.key) { importText.value = ''; preview.value = null; notice.value = `已更新 ${pending.changes} 个进度值。` }
 }
 watch(() => scope.value.key, () => {
-  fileSequence++; backupOpen.value = false; editing.value = ''; resolveTrust.value = false; localError.value = ''; notice.value = ''; importText.value = ''; importFromFile.value = false; preview.value = null; overwrite.value = false
+  clearImport(); backupOpen.value = false; editing.value = ''; resolveTrust.value = false
 }, { flush: 'sync' })
 async function restoreBackup(file, confirmOpened) {
   if (await openBackup() && confirmOpened()) await readBackupFile(file)
@@ -210,7 +211,3 @@ defineExpose({ beforeLeave, saving, openBackup, restoreBackup, ready })
 </script>
 <style scoped src="./operatorPortraitGrid.css"></style>
 <style scoped src="./operatorRelationshipsMobile.css"></style>
-<style scoped>
-.relationship-file-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.relationships-exchange button.btn.relationship-file-button { color: var(--on-strong); background: var(--tea); }
-</style>

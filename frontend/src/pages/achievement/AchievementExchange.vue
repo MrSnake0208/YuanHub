@@ -1,35 +1,32 @@
 <template>
   <DataExchangeDialog :open="open || restoreOpen" v-model:tab="tab" :account-name="accountName" :game="game" :busy="working" :before-close="beforeClose" @close="closeExchange">
     <template #import>
-      <div class="achievement-exchange-content">
-        <div class="achievement-file-actions">
-          <button class="btn primary" type="button" :disabled="!canRecord || working" @click="fileInput.click()">选择备份文件</button>
-          <input ref="fileInput" type="file" hidden accept=".json,application/json" :disabled="!canRecord || working" @change="selectFile">
-          <button v-if="documentData && !preview && !error && !working" type="button" :disabled="!canRecord || working" @click="generatePreview">预览这个文件</button>
-        </div>
-        <ImportGuide :sources="achievementImportSources" />
-        <template v-if="documentData">
-          <p>{{ filename }}<span v-if="documentData.source_account?.name"> · 文件来源账号：{{ documentData.source_account.name }}（仅提示）</span></p>
-          <label class="achievement-file-label">冲突处理<select v-model="strategy" :disabled="working"><option value="keep_current">保留当前冲突记录（默认）</option><option value="use_file">采用文件内容（空备注保留现有内容）</option></select></label>
-          <p v-if="documentData.catalog_version !== preview?.catalog_version" class="achievement-hint">目录版本可能不同，按稳定 ID 核对，不按名称匹配。</p>
-          <button v-if="preview || error" type="button" :disabled="!canRecord || working" @click="generatePreview">{{ preview ? '重新预览' : '生成导入预览' }}</button>
+      <input ref="fileInput" type="file" hidden accept=".json,application/json" :disabled="!canRecord || working" @change="selectFile">
+      <BackupImportPanel feature="成就" :account-name="accountName" :filename="filename" :source-name="documentData?.source_account?.name"
+        :sources="achievementImportSources" :disabled="!canRecord || working" :done="success" @choose="fileInput.click()" @again="clearFile">
+        <template v-if="preview && !success">
+          <BackupImportSummary aria-label="成就导入预览" :counts="[['新增', preview.stats.add], ['已有', preview.stats.same], ['冲突', preview.stats.conflict]]">
+            确认后影响 {{ preview.affected }} 条。{{ strategy === 'keep_current' ? '冲突记录保持现状。' : '采用备份中的冲突字段，文件缺项保留现有记录。' }}
+          </BackupImportSummary>
+          <p v-if="preview.stats.unknown">有 {{ preview.stats.unknown }} 条记录本站暂不认识，会自动跳过，不会写入。</p>
+          <p v-if="preview.stats.invalid || preview.stats.mismatched" class="achievement-error" role="alert">存在非法或不匹配记录，无法确认导入。</p>
+          <BackupImportDetails>
+            <p v-if="documentData?.catalog_version !== preview.catalog_version" class="backup-import-hint">目录版本可能不同，按稳定 ID 核对。</p>
+            <ol class="achievement-import-items"><li v-for="item in preview.items" :key="item.index">第 {{ item.index + 1 }} 条 · {{ item.achievement_id || '无 ID' }} · {{ OUTCOMES[item.outcome] }}<span v-if="item.message">：{{ item.message }}</span></li></ol>
+          </BackupImportDetails>
+          <ImportMoreOptions summary="冲突时怎么处理">
+            <label>冲突处理<select v-model="strategy" :disabled="working"><option value="keep_current">保留当前冲突记录（默认）</option><option value="use_file">采用文件内容（空备注保留现有内容）</option></select></label>
+          </ImportMoreOptions>
         </template>
-        <section v-if="preview" aria-label="成就导入预览">
-          <p>新增 {{ preview.stats.add }} · 相同 {{ preview.stats.same }} · 冲突 {{ preview.stats.conflict }} · 未知 ID {{ preview.stats.unknown }} · 非法 {{ preview.stats.invalid }}</p>
-          <p>最终影响 {{ preview.affected }} 条。{{ strategy === 'keep_current' ? '冲突记录保持现状。' : '确认后替换冲突字段，文件缺项不会清空现有记录。' }}</p>
-          <p class="achievement-hint">确认后才会写入当前账号。</p>
-          <label v-if="preview.stats.unknown" class="achievement-check"><input v-model="skipUnknown" type="checkbox" :disabled="working">我确认跳过 {{ preview.stats.unknown }} 条未知 ID</label>
-          <p v-if="preview.stats.invalid" class="achievement-error">含非法记录，整份文件不会写入。请修正文件。</p>
-          <details><summary>查看逐条核对结果</summary><ol class="achievement-import-items"><li v-for="item in preview.items" :key="item.index">第 {{ item.index + 1 }} 条 · {{ item.achievement_id || '无 ID' }} · {{ OUTCOMES[item.outcome] }}<span v-if="item.message">：{{ item.message }}</span></li></ol></details>
-        </section>
-        <p v-if="tab === 'import' && error" ref="errorPanel" class="achievement-error" role="alert" tabindex="-1">{{ error }}</p>
-        <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
-        <ImportMoreOptions>
-          <ImportGuide :sources="achievementImportSources" detail />
-        </ImportMoreOptions>
-      </div>
+        <p v-if="working && !preview" role="status">正在核对备份…</p>
+        <div v-if="tab === 'import' && error" class="backup-import-actions">
+          <p ref="errorPanel" class="achievement-error" role="alert" tabindex="-1">{{ error }}</p>
+          <button v-if="documentData && !preview && !working" class="backup-import-text" type="button" :disabled="!canRecord" @click="generatePreview">重试</button>
+        </div>
+        <ImportMoreOptions><ImportGuide :sources="achievementImportSources" detail /></ImportMoreOptions>
+      </BackupImportPanel>
     </template>
-    <template #import-footer><button class="btn primary" type="button" :disabled="!canConfirm" @click="commit">{{ working ? '正在处理…' : '确认导入' }}</button></template>
+    <template #import-footer><button v-if="preview && !success" class="btn primary" type="button" :disabled="!canConfirm" @click="commit">{{ working ? '正在处理…' : '确认导入 ' + preview.affected + ' 条' }}</button></template>
     <template #export>
       <BackupExportPanel title="成就备份" contents="成就完成记录" :notice="exportNotice">
         <template #feedback>
@@ -42,6 +39,9 @@
 </template>
 
 <script setup>
+import BackupImportPanel from '../../components/BackupImportPanel.vue'
+import BackupImportSummary from '../../components/BackupImportSummary.vue'
+import BackupImportDetails from '../../components/BackupImportDetails.vue'
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
 import DataExchangeDialog from '../../components/DataExchangeDialog.vue'
 import ImportGuide from '../../components/ImportGuide.vue'
@@ -60,22 +60,26 @@ const exportNotice = ref('')
 const achievementImportSources = [
   { title: '本站成就备份', from: '在成就页「导入/导出」里下载，可在其他设备或账号恢复。' },
 ]
-const fileInput = ref(null), errorPanel = ref(null), documentData = ref(null), filename = ref(''), strategy = ref('keep_current'), skipUnknown = ref(false), preview = ref(null), working = ref(false), error = ref(''), notice = ref('')
+const fileInput = ref(null), errorPanel = ref(null), documentData = ref(null), filename = ref(''), strategy = ref('keep_current'), preview = ref(null), working = ref(false), error = ref(''), success = ref('')
 const OUTCOMES = { add: '新增', same: '相同', conflict: '冲突', unknown: '未知 ID', invalid: '非法' }
 let generation = 0, alive = true
 const capture = () => ({ generation, accountId: props.accountId, identity: props.identity, game: props.game, contextVersion: props.contextVersion })
 const matches = token => alive && token.generation === generation && token.accountId === props.accountId && token.identity === props.identity && token.game === props.game && token.contextVersion === props.contextVersion
-const canConfirm = computed(() => props.canRecord && !working.value && !!preview.value && !preview.value.stats.invalid && (!preview.value.stats.unknown || skipUnknown.value))
+const canConfirm = computed(() => props.canRecord && !working.value && !!preview.value && !preview.value.stats.invalid && !preview.value.stats.mismatched)
 function busy(value) { working.value = value; emit('busy', value) }
-function clearPreview() { preview.value = null; skipUnknown.value = false }
-function reset() { generation++; restoreOpen.value = false; clearPreview(); documentData.value = null; filename.value = ''; strategy.value = 'keep_current'; error.value = ''; notice.value = ''; exportNotice.value = ''; busy(false); if (fileInput.value) fileInput.value.value = '' }
+function clearPreview() { preview.value = null }
+function clearFile() {
+  generation++; clearPreview(); documentData.value = null; filename.value = ''; strategy.value = 'keep_current'; error.value = ''; success.value = ''
+  if (fileInput.value) fileInput.value.value = ''
+}
+function reset() { restoreOpen.value = false; clearFile(); exportNotice.value = ''; busy(false) }
 watch(() => props.contextVersion, reset, { flush: 'sync' })
 watch(() => props.open, value => { if (!value) { reset(); tab.value = 'import' } })
 function closeExchange() {
   if (restoreOpen.value) { reset(); tab.value = 'import' }
   emit('close')
 }
-watch(() => props.revision, () => { if (preview.value) { clearPreview(); notice.value = '档案已变化，请重新预览。' } })
+watch(() => props.revision, () => { if (preview.value) { clearPreview(); error.value = '档案已变化，请重试预览。' } })
 watch(strategy, async () => { clearPreview(); if (documentData.value && !working.value) await generatePreview() })
 async function showError(message) { error.value = message; await nextTick(); errorPanel.value?.focus() }
 async function beforeClose() {
@@ -92,7 +96,7 @@ function selectFile(event) {
 async function readBackupFile(input) {
   if (!input || !props.canRecord || working.value) return
   const token = capture()
-  clearPreview(); error.value = ''; notice.value = ''; documentData.value = null
+  clearPreview(); error.value = ''; success.value = ''; documentData.value = null; filename.value = input.name
   busy(true)
   try {
     const file = await unwrapFullBackup(input, 'achievement')
@@ -115,7 +119,7 @@ usePendingBackupRestore(['achievement'], () => props.canRecord && !!props.identi
 async function generatePreview() {
   if (!props.canRecord || working.value || !documentData.value) return
   const token = capture()
-  clearPreview(); error.value = ''; notice.value = ''; busy(true)
+  clearPreview(); error.value = ''; busy(true)
   try {
     const result = await api.previewAchievements(token.accountId, token.identity, documentData.value, strategy.value)
     if (matches(token)) preview.value = result
@@ -129,10 +133,10 @@ async function commit() {
   try {
     if (!await dialog.confirm({ title: '确认导入成就档案？', message: `目标：${props.accountName} · ${props.game}，将影响 ${plan.affected} 条记录。${plan.strategy === 'use_file' ? '冲突字段将采用文件内容。' : '保留当前冲突记录。'}`, confirmText: '确认导入', cancelText: '返回预览' })) return
     if (!matches(token) || plan !== preview.value) return
-    const result = await api.importAchievements(token.accountId, token.identity, documentData.value, plan, skipUnknown.value)
+    const result = await api.importAchievements(token.accountId, token.identity, documentData.value, plan, true)
     if (!matches(token)) return
     clearPreview(); documentData.value = null
-    notice.value = '导入完成，已保存到此账号。'
+    success.value = `已处理 ${plan.affected} 条记录。`
     emit('committed', result)
   } catch (failure) {
     if (matches(token)) {
@@ -156,15 +160,5 @@ defineExpose({ hasDraft: () => !!documentData.value })
 </script>
 
 <style scoped>
-.achievement-exchange-content { min-width: 0; font-size: 14px; line-height: 1.6; }
-.achievement-exchange-content p { margin-block: 12px; }
-.achievement-exchange-content .achievement-hint { color: var(--ink-60); font-size: 13px; }
-.achievement-exchange-content button, .achievement-exchange-content :is(input:not([type="checkbox"]), select) { min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
-.achievement-exchange-content :is(input:not([type="checkbox"]), select) { box-sizing: border-box; min-width: 0; width: 100%; max-width: 100%; }
-.achievement-exchange-content button, .achievement-exchange-content summary { cursor: pointer; }
-.achievement-file-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.achievement-file-actions .btn.primary { background: var(--tea); color: var(--on-strong); border-color: var(--tea); }
-.achievement-exchange-content button:disabled, .achievement-exchange-content input:disabled, .achievement-exchange-content select:disabled { opacity: .5; cursor: not-allowed; }
-.achievement-exchange-content :is(button, input, select, summary):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 .achievement-import-items { max-height: none; overflow: visible; }
 </style>
