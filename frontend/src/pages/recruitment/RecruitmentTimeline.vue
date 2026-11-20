@@ -31,15 +31,15 @@
               </span>
               <span v-else class="bn-mark">鸢</span>
               <span class="bn-text">
+                <span v-if="status(pool) !== '已结束'" class="bn-status" :class="{ 'is-open': status(pool) === '进行中' || status(pool) === '常驻开放' }">
+                  <i />{{ statusLabel(pool) }}
+                </span>
                 <span class="bn-title-row">
                   <span class="bn-name">{{ details(pool).name }}</span>
                   <span class="bn-seal">{{ normalizeRecruitmentPoolType(details(pool).pool_type) === 'unknown' ? '招募' : recruitmentPoolType(details(pool).pool_type).label }}</span>
                 </span>
               </span>
               <span v-if="poolDate(pool)" class="pool-dates">{{ poolDate(pool) }}</span>
-              <span v-if="status(pool) !== '已结束'" class="bn-status" :class="{ 'is-open': status(pool) === '进行中' || status(pool) === '常驻开放' }">
-                <i />{{ statusLabel(pool) }}
-              </span>
             </span>
             <span class="banner-content">
               <span class="banner-summary" :class="{ 'has-many-up': summaryAgents(pool).length >= 3 }">
@@ -297,9 +297,11 @@ watch(() => props.contextVersion, () => { year.value = ''; descending.value = tr
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .bn-status {
-  position: absolute; z-index: 3; left: 3.4%; top: 9%; display: inline-flex; align-items: center; gap: 6px;
+  position: absolute; right: 0; bottom: 100%; margin-bottom: .6cqw;
+  white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
   font: 600 clamp(10px, 1.9cqw, 13px)/1 var(--font-b); color: #5A4633; background: rgba(255,253,246,.8);
-  padding: 5px 9px; border-radius: 999px; border: 1px solid #E3D5BC;
+  padding: 3px 8px; border-radius: 999px; border: 1px solid #E3D5BC;
 }
 .bn-status i { width: 6px; height: 6px; border-radius: 50%; background: #b9ad9a; }
 .bn-status.is-open i { background: #8fd19e; box-shadow: 0 0 0 3px rgba(143,209,158,.25); }
