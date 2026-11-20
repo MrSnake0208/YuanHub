@@ -349,6 +349,16 @@ export function calendarDeadline(item, today, now = Date.now()) {
   return days === 0 ? '今天结束' : days === 1 ? '明天结束' : `还有 ${days} 天`
 }
 
+export function calendarPoolRemaining(item, today, now = Date.now()) {
+  if (item.source_type === 'PRIVATE_ITEM' || item.category !== 'RECRUITMENT' || item.end_date == null) return ''
+  if (item.start_at ? Date.parse(item.start_at) > now : item.start_date > today) return ''
+  if (calendarEnded(item, today, now)) return ''
+  const deadline = calendarDeadline(item, today, now)
+  if (deadline === '今天结束') return '（今天结束）'
+  if (deadline === '明天结束') return '（剩 1 天）'
+  return deadline.startsWith('还有 ') ? `（${deadline.replace('还有 ', '剩 ')}）` : ''
+}
+
 export function calendarRangeLabel(item) {
   if (item.source_type === 'PRIVATE_ITEM') {
     const multiDay = item.start_date !== item.end_date

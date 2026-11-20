@@ -38,7 +38,7 @@
               </span>
               <span v-if="poolDate(pool)" class="pool-dates">{{ poolDate(pool) }}</span>
               <span v-if="status(pool) !== '已结束'" class="bn-status" :class="{ 'is-open': status(pool) === '进行中' || status(pool) === '常驻开放' }">
-                <i />{{ status(pool) === '常驻开放' ? '常驻' : status(pool) }}
+                <i />{{ statusLabel(pool) }}
               </span>
             </span>
             <span class="banner-content">
@@ -83,6 +83,7 @@ import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
 import { dateInZone } from '../../utils/businessDay.js'
 import { recruitmentPoolCatalog } from './rules.js'
+import { calendarDayDistance } from '../../data/activityCalendar.js'
 import { isPermanentRecruitmentPool, normalizeRecruitmentPoolType, recruitmentPoolDateLabel, recruitmentPoolType } from '../../data/recruitmentPoolTypes.js'
 import { resolveOperatorPortrait } from '../../utils/operatorPortrait.js'
 
@@ -134,8 +135,8 @@ function isEmptyPool(pool) {
   const summary = props.poolSummaries[pool.pool_id]
   return !!summary && summary.event_count === 0 && (summary.known_total_pulls === 0 || summary.known_total_pulls == null) && !Number.isInteger(pool.progress)
 }
-function status(pool) {
-  const data = details(pool), today = dateInZone('Asia/Shanghai')
+function status(pool, today = dateInZone('Asia/Shanghai')) {
+  const data = details(pool)
   if (data.hidden) return '已隐藏 · 历史保留'
   if (data.enabled === false) return '已停用'
   if (data.enabled == null) return pool.snapshot?.catalog_pool_id ? '目录未确认' : '历史卡池'
@@ -143,6 +144,14 @@ function status(pool) {
   if (data.end_date && data.end_date < today) return '已结束'
   if (isPermanentRecruitmentPool(data)) return '常驻开放'
   return data.start_date && data.end_date ? '进行中' : '已启用'
+}
+function statusLabel(pool) {
+  const today = dateInZone('Asia/Shanghai')
+  const state = status(pool, today)
+  if (state === '常驻开放') return '常驻'
+  if (state !== '进行中') return state
+  const endDate = details(pool).end_date
+  return endDate === today ? '进行中 · 今天结束' : `进行中 · 剩 ${calendarDayDistance(today, endDate)} 天`
 }
 const avatarResults = computed(() => new Map(props.pools.map(pool => [pool.pool_id,
   activeUpSlots(pool).map(slot => {
