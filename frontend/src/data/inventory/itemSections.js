@@ -64,11 +64,16 @@ export const GAME_BAG_ITEM_IDS = Object.freeze([
 
 export const FRONTEND_HIDDEN_ITEM_IDS = Object.freeze([])
 
+export const BIRD_FOOD_ORDER_PRESETS = Object.freeze([
+  { id: 'backpack', label: '背包顺序', itemIds: ['mazi', 'jizhi', 'sherou', 'zhuyu'] },
+  { id: 'game', label: '游戏顺序', itemIds: ['sherou', 'mazi', 'zhuyu', 'jizhi'] }
+])
+
 const GAME_BAG_POSITION = new Map(GAME_BAG_ITEM_IDS.map(function (id, index) { return [id, index] }))
-const STOCK_EDIT_LEADING_IDS = ['mazi', 'jizhi', 'sherou', 'zhuyu', 'tianjifuchuan', 'fuchuan', 'baijinbi']
+const STOCK_EDIT_LEADING_RESOURCE_IDS = ['tianjifuchuan', 'fuchuan', 'baijinbi']
 const RESOURCE_SUBCATEGORIES = Object.freeze([
   { id: 'draw-resources', name: '抽卡资源', itemIds: ['fuchuan', 'tianjifuchuan', 'baijinbi'] },
-  { id: 'bird-food-pack', name: '鸟食礼包', itemIds: ['mazi', 'jizhi', 'sherou', 'zhuyu'] },
+  { id: 'bird-food-pack', name: '鸟食礼包', itemIds: BIRD_FOOD_ORDER_PRESETS[0].itemIds },
   { id: 'divination-stone', name: '命盘&星石', itemIds: ['gongguoge', 'shanebu', 'gusuanchou', 'jinsuanchou', 'jieyangping', 'jiezheping', 'jiezhuping'] },
   { id: 'agent-experience', name: '密探经验', itemIds: ['liutaobingshu', 'bingshuquanjuan', 'bingshucanjuan'] }
 ])
@@ -108,8 +113,10 @@ export function resourceEquivalents(counts) {
   }
 }
 
-export function sortStockEditItems(entries) {
-  const leadingPosition = new Map(STOCK_EDIT_LEADING_IDS.map(function (id, index) { return [id, index] }))
+export function sortStockEditItems(entries, birdFoodOrder = 'backpack') {
+  const preset = BIRD_FOOD_ORDER_PRESETS.find(function (order) { return order.id === birdFoodOrder }) || BIRD_FOOD_ORDER_PRESETS[0]
+  const leadingIds = [...preset.itemIds, ...STOCK_EDIT_LEADING_RESOURCE_IDS]
+  const leadingPosition = new Map(leadingIds.map(function (id, index) { return [id, index] }))
   return sortItemsByGameOrder(entries).sort(function (a, b) {
     const aPosition = leadingPosition.has(a.id) ? leadingPosition.get(a.id) : Infinity
     const bPosition = leadingPosition.has(b.id) ? leadingPosition.get(b.id) : Infinity

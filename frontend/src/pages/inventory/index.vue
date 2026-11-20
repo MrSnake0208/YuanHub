@@ -265,7 +265,7 @@
                 </p>
                 <details v-if="editingStock" class="stock-edit-help">
                   <summary aria-label="库存编辑说明"><CircleHelp :size="16" aria-hidden="true" /></summary>
-                  <p>{{ entityType === 'agent' ? '心纸背包顺序按绝密、机密、隐密排列，同阶级按编号从新到旧。' : '道具默认按游戏背包内顺序。' }}顶部更新数量维护当前类型；分类编辑只保存所选分类。未修改的既有数量保留。</p>
+                  <p>{{ entityType === 'agent' ? '心纸背包顺序按绝密、机密、隐密排列，同阶级按编号从新到旧。' : '道具默认按背包顺序，鸟食可切换为游戏内顺序。' }}顶部更新数量维护当前类型；分类编辑只保存所选分类。未修改的既有数量保留。</p>
                 </details>
                 <div v-if="editingStock" class="manifest-edit-actions touch-targets">
                   <label v-if="needsFullStockConfirmation" class="stock-baseline-confirmation">
@@ -593,6 +593,21 @@
               >
                 {{ stockDraftError || stockEditError }}
               </p>
+              <div v-if="showBirdFoodOrder" class="stock-edit-order">
+                <span aria-hidden="true">排列</span>
+                <div class="type-switch touch-targets" role="group" aria-label="鸟食排列顺序">
+                  <button
+                    v-for="preset in BIRD_FOOD_ORDER_PRESETS"
+                    :key="preset.id"
+                    type="button"
+                    :class="{ on: birdFoodOrder === preset.id }"
+                    :aria-pressed="birdFoodOrder === preset.id"
+                    @click="setBirdFoodOrder(preset.id)"
+                  >
+                    {{ preset.label }}
+                  </button>
+                </div>
+              </div>
               <div
                 v-if="visibleStockEditorEntries.length === 0"
                 class="state slim"
@@ -1716,6 +1731,7 @@ import {
   visibleAgentEntries,
 } from "../../data/inventory/agentManifest.js";
 import {
+  BIRD_FOOD_ORDER_PRESETS,
   FRONTEND_HIDDEN_ITEM_IDS,
   buildItemCategorySections,
   resourceEquivalents,
@@ -1888,6 +1904,8 @@ const importResult = ref(null);
 const loadingExample = ref(false);
 const readingImportFile = ref(false);
 const editingStock = ref(false);
+const BIRD_FOOD_ORDER_STORAGE_KEY = "inventory-bird-food-order";
+const birdFoodOrder = ref(readBirdFoodOrder());
 const savingStock = ref(false);
 const stockDraft = ref({});
 const stockOriginal = ref({});
@@ -2680,6 +2698,25 @@ function resetAgentFilters() {
   clearAgentFacetFilters();
 }
 
+function readBirdFoodOrder() {
+  try {
+    const saved = localStorage.getItem(BIRD_FOOD_ORDER_STORAGE_KEY);
+    if (BIRD_FOOD_ORDER_PRESETS.some(preset => preset.id === saved)) return saved;
+  } catch {
+    return "backpack";
+  }
+  return "backpack";
+}
+
+function setBirdFoodOrder(order) {
+  birdFoodOrder.value = order;
+  try {
+    localStorage.setItem(BIRD_FOOD_ORDER_STORAGE_KEY, order);
+  } catch {
+    // 本地存储不可用时，当前选择仍然生效。
+  }
+}
+
 const stockEditEntries = computed(function () {
   const baseCatalog =
     entityType.value === "agent"
@@ -2709,8 +2746,15 @@ const stockEditorEntries = computed(function () {
     return scopeIds.has(item.id);
   });
 });
+const showBirdFoodOrder = computed(() => editingStock.value && entityType.value === "item" &&
+  stockEditorEntries.value.some(item => BIRD_FOOD_ORDER_PRESETS[0].itemIds.includes(item.id)));
+const orderedStockEditorEntries = computed(function () {
+  return showBirdFoodOrder.value && birdFoodOrder.value === "game"
+    ? sortStockEditItems(stockEditorEntries.value, birdFoodOrder.value)
+    : stockEditorEntries.value;
+});
 const visibleStockEditorEntries = computed(function () {
-  if (entityType.value !== "agent") return stockEditorEntries.value;
+  if (entityType.value !== "agent") return orderedStockEditorEntries.value;
   const rows = stockEditorEntries.value.map(function (entry) {
     const count = Number(currentMap.value[entry.id]) || 0;
     return Object.assign({}, entry, { count: count, owned: count > 0 });
@@ -5720,8 +5764,36 @@ onBeforeUnmount(function () {
 <style scoped src="./inventoryWorkspaceMobile.css"></style>
 <style scoped>
 #inventory-panel-manifest { scroll-margin-block-start: 16px; }
+.stock-edit-order {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--ink-60);
+  font: 600 12px/1.5 var(--font-b);
+}
+.stock-edit-order .type-switch {
+  width: auto;
+  min-width: 0;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+}
+.stock-edit-order .type-switch > button {
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
 @media (max-width: 1199px) {
   #inventory-panel-manifest { scroll-margin-block-start: max(16px, var(--mobile-shell-follow-top, 16px)); }
+  .stock-edit-order { margin-bottom: 8px; }
+  .stock-edit-order .type-switch {
+    display: grid;
+    flex: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .stock-edit-order .type-switch > button { min-height: 44px; }
 }
 @media (hover: none), (pointer: coarse) {
   .stock-editor:not(.is-agent-editor) .stock-stepper,
