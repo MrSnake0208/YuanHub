@@ -25,7 +25,7 @@ footer button { min-height: 44px; }
 .catalog-filter-body :deep(.pf-label) { width: auto; justify-content: flex-start; text-align: left; font-size: 13px; }
 .catalog-filter-body :deep(.mf-filter) { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; background: transparent; }
 .catalog-filter-body :deep(.mf-filter button) { flex: 0 0 auto; width: auto; max-width: 100%; min-height: 40px; padding: 7px 11px; font-size: 13px; border: 1px solid var(--line); }
-.catalog-filter-body :deep(.mf-filter button.on) { background: color-mix(in srgb, var(--yellow) 45%, var(--surface)); box-shadow: none; }
+.catalog-filter-body :deep(.mf-filter button.on) { border-color: currentColor; background: color-mix(in srgb, var(--yellow) 60%, var(--surface)); box-shadow: inset 0 0 0 1px currentColor; }
 .catalog-filter-body :deep(.growth-filter-presets button) { min-height: 40px; font-size: 13px; }
 .catalog-filter-body :deep(.current-growth-filter summary) { min-height: 44px; width: 100%; }
 .catalog-filter-body :deep(.current-growth-filter summary::after) { content: ''; width: 7px; height: 7px; margin-left: auto; margin-right: 4px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); }

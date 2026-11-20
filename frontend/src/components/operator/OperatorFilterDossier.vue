@@ -67,7 +67,6 @@
               :class="[row.key === 'rarityFilter' && option.value !== 'all' ? 'rarity-r' + option.value : '', { on: isFilterSelected(props[row.key], option.value) }]"
               @click="selectFilter(row.key, option.value)"
             >
-              <Check v-if="Array.isArray(props[row.key]) && option.value !== 'all'" :size="12" class="filter-check" aria-hidden="true" />
               <img v-if="row.key === 'profFilter' && option.value !== 'all' && profIcon(option.value)" :src="profIcon(option.value)" alt="" aria-hidden="true" />{{ option.label }}
             </button>
           </div>
@@ -128,7 +127,7 @@
 
 <script setup>
 import { computed, ref, useId } from 'vue'
-import { Check, RotateCcw, Search } from '@lucide/vue'
+import { RotateCcw, Search } from '@lucide/vue'
 import OperatorGrowthFilters from './OperatorGrowthFilters.vue'
 import { DISC_FILTER_OPTIONS } from '../../utils/operatorDiscLoadouts.js'
 
@@ -304,8 +303,6 @@ function statusCount(value) {
 .rarity-filter button.rarity-r3.on { background: color-mix(in srgb, var(--theme-info-bg, #99b5cf) 34%, var(--surface)); color: var(--theme-info-text, #47647d); }
 .rarity-filter button.rarity-r4.on { background: color-mix(in srgb, var(--theme-purple-bg, #8672b2) 25%, var(--surface)); color: var(--theme-purple-text, #62508b); }
 .rarity-filter button.rarity-r5.on { background: color-mix(in srgb, var(--yellow) 62%, var(--surface)); color: var(--theme-accent-text, var(--accent-strong)); }
-.filter-check { flex: none; }
-.mf-filter button:not(.on) .filter-check { visibility: hidden; }
 .mf-filter button:focus-visible {
   outline: 2px solid var(--theme-focus, var(--brand-blue));
   outline-offset: 1px;
