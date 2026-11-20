@@ -359,8 +359,8 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
 @media (min-width: 1000px) and (min-height: 640px) {
   .reward-dialog.compact-entry.mode-manual:not(.resource-operation) { height: min(780px, calc(var(--modal-viewport-height, 100dvh) - 48px)); }
   .compact-entry:not(.resource-operation) .reward-dialog-scroll { display: flex; flex-direction: column; }
-  .compact-entry .manual-form { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-  .compact-entry .manual-form > fieldset { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .compact-entry .manual-form, .compact-entry .manual-form > fieldset { display: flex; flex-direction: column; flex: 1; }
+  .is-short-viewport .compact-entry :is(.manual-form, .manual-form > fieldset) { min-height: 0; }
   /* 展开来源时仍为筛选、至少一行候选和保存区留出空间。 */
   .compact-entry .channel-section { flex: none; max-height: min(240px, max(96px, calc(var(--modal-viewport-height, 100dvh) - 520px))); overflow-y: auto; }
   .compact-entry .manual-columns { flex: 1; min-height: 300px; }
@@ -369,6 +369,12 @@ fieldset { margin: 0; padding: 0; min-width: 0; }
   .compact-entry .training-picker { overflow-y: auto; overscroll-behavior: contain; }
   .compact-entry .reward-grid { flex: 1; min-height: 0; max-height: none; }
   .compact-entry .basket-list { max-height: none; }
+  /* 保留可操作的一行，其余内容在各自的区域内滚动。 */
+  :where(.reward-dialog-mask:not(.is-short-viewport)) .compact-entry :is(.reward-picker, .reward-receipt) { min-height: auto; }
+  :where(.reward-dialog-mask:not(.is-short-viewport)) .compact-entry .reward-receipt { display: flex; flex-direction: column; }
+  :where(.reward-dialog-mask:not(.is-short-viewport)) .compact-entry .reward-grid { contain: size; min-height: 112px; }
+  :where(.reward-dialog-mask:not(.is-short-viewport)) .compact-entry .basket-list { contain: size; flex: 1; min-height: 64px; }
+  :where(.reward-dialog-mask:not(.is-short-viewport)) .compact-entry .training-picker { contain: size; min-height: 288px; }
   .compact-entry .preview-section, .compact-entry .result { flex-shrink: 0; }
 }
 

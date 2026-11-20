@@ -1119,6 +1119,7 @@ async function submit() {
     emit('imported', targetAccount)
     await nextTick()
     resultBox.value?.focus({ preventScroll: true })
+    if (resultBox.value) revealFocusedControl()
   } catch (err) {
     if (!disposed && props.accountId === targetAccount && auth.userInfo?.id === targetUser && manual.value === targetDraft) {
       const rejectedAnnotation = pendingAnnotationRevision.value !== null && [400, 401, 403, 404, 409, 422].includes(err.status)
