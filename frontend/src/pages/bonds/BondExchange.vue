@@ -2,11 +2,12 @@
   <DataExchangeDialog :open="open" v-model:tab="tab" :account-name="accountName" :game="game" :busy="busy" @update:open="emit('update:open', $event)">
     <template #import>
       <section class="bond-exchange" aria-label="备份迁移">
-        <ImportGuide :sources="[{ title: '本站羁绊备份', from: '在羁绊页「导入/导出」里导出的原生备份。' }, { title: '旧版羁绊助手备份', from: '从之前使用的羁绊助手导出的备份文件；导入时需选择来源账号，缺少游戏信息时还需选择来源游戏。' }]" :step="notice === '导入已保存到所选账号。' || busy && preview ? 3 : document ? 2 : 1" :target="accountName" />
-        <p>先选择来源，再选择现有目标账号。账号名称不会用于自动关联；文件缺项和旧助手的未收录状态不会清空当前记录。文件最多8MiB。</p>
-        <div class="bond-toolbar">
-          <label>选择备份文件<input type="file" accept=".json,application/json" :disabled="busy" @change="readFile"></label>
+        <div class="bond-toolbar bond-file-actions">
+          <button class="btn primary" type="button" :disabled="busy" @click="fileInput.click()">选择备份文件</button>
+          <input ref="fileInput" type="file" hidden accept=".json,application/json" :disabled="busy" @change="readFile">
+          <button v-if="document && !preview && !error && !busy && notice !== '导入已保存到所选账号。' && !source?.conflict && (!document.format || document.game === game)" type="button" :disabled="!canPreview" @click="previewFile">预览这个文件</button>
         </div>
+        <ImportGuide :sources="bondImportSources" />
         <p v-if="!identity">可先选择文件查看来源；登录并选择账号后才能预览导入。</p>
         <template v-if="document">
           <p>{{ document.format ? '本站羁绊备份' : '旧助手备份' }} · {{ filename }}</p>
@@ -17,11 +18,12 @@
           <label v-if="document.format">恢复策略<select v-model="strategy" :disabled="busy"><option value="merge">合并已记录项（默认）</option><option value="use_file">采用文件显式状态（缺项保留）</option></select></label>
           <p v-if="document.format && document.game !== game" class="bond-error" role="alert">备份游戏与目标账号不匹配，请选择同游戏账号。</p>
           <p v-if="source?.conflict" class="bond-error" role="alert">来源游戏信息有冲突，请先核对文件。</p>
-          <div class="bond-toolbar"><button type="button" :disabled="!canPreview" @click="previewFile">生成导入预览</button><button type="button" :disabled="busy" @click="clearFile">移除文件</button></div>
+          <div class="bond-toolbar"><button v-if="error && !preview" type="button" :disabled="!canPreview" @click="previewFile">重新预览</button><button type="button" :disabled="busy" @click="clearFile">移除文件</button></div>
         </template>
         <section v-if="preview" aria-label="导入预览结果">
           <h3>确认导入到 {{ accountName }} · {{ game }}</h3>
           <p>预计修改 {{ preview.affected }} 条。</p>
+          <p>确认后才会写入所选账号，文件缺项和旧助手的未收录状态会保留现有记录。</p>
           <dl class="bond-import-stats">
             <div v-for="group in previewGroups" :key="group.name">
               <dt>{{ group.name }}</dt>
@@ -34,11 +36,12 @@
           <label v-if="preview.stats.unknown" class="bond-skip-unknown"><input v-model="skipUnknown" type="checkbox" :disabled="busy">我已核对，跳过 {{ preview.stats.unknown }} 条未知或未开放的鸢报与战斗记录</label>
           <p v-if="preview.stats.invalid || preview.stats.mismatched" class="bond-error" role="alert">存在非法或不匹配记录，不能确认；请修正文件后重新预览。</p>
         </section>
-        <p>原生备份保留历史记录，不包含登录凭据。来源和时间以本站服务器本次保存为准，不代表游戏内首次触发时间；成就人工完成状态需单独备份。</p>
         <p v-if="busy" role="status">正在处理，请稍候…</p>
         <p v-if="error" class="bond-error" role="alert">{{ error }}</p>
         <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
-        <details><summary>技术详情</summary><p v-if="document?.format">文件格式：YuanHub 原生羁绊备份 v1。</p><p v-if="preview">档案版本 {{ preview.expected_revision }}。</p><p>旧助手的 false 和文件缺项不会清空当前记录。</p></details>
+        <ImportMoreOptions>
+          <ImportGuide :sources="bondImportSources" detail />
+        </ImportMoreOptions>
       </section>
     </template>
     <template #import-footer>
@@ -57,14 +60,20 @@
 </template>
 
 <script setup>
-import { computed, onScopeDispose, ref, watch } from 'vue'
+import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
 import DataExchangeDialog from '../../components/DataExchangeDialog.vue'
 import ImportGuide from '../../components/ImportGuide.vue'
+import ImportMoreOptions from '../../components/ImportMoreOptions.vue'
 import { exportBonds, previewBonds, confirmBonds } from '../../api/bonds.js'
 import { downloadBondFile, legacySources, MAX_BYTES, readBondBackup } from './rules.js'
 const props = defineProps({ open: Boolean, identity: String, accountId: String, accountName: String, game: String, revision: Number, catalogVersion: String, generation: Number, accounts: Array, canUse: Boolean })
 const emit = defineEmits(['update:open', 'busy', 'committed', 'target'])
 const tab = ref('import')
+const fileInput = ref(null)
+const bondImportSources = [
+  { title: '本站羁绊备份', from: '在羁绊页「导入/导出」里导出的原生备份。' },
+  { title: '旧版羁绊助手备份', from: '从羁绊助手导出。导入时请手动选择来源账号，如果文件里没有游戏信息，也要选择来源游戏。' },
+]
 watch(() => props.open, open => { if (open) tab.value = 'import' })
 const document = ref(null), filename = ref(''), sourceKey = ref(''), sourceGame = ref(''), strategy = ref('merge'), preview = ref(null), busy = ref(false), error = ref(''), notice = ref(''), skipUnknown = ref(false), itemPage = ref(0)
 const labels = { add: '新增', same: '相同／保留', conflict: '冲突', unknown: '未知', mismatched: '不匹配', invalid: '非法' }
@@ -88,7 +97,7 @@ watch(() => [props.accountId, props.game, props.revision, props.catalogVersion, 
 watch(() => props.identity, () => { clearFile(); setBusy(false) })
 async function readFile(event) {
   const file = event.target.files?.[0]; event.target.value = ''
-  if (!file) return
+  if (!file || busy.value) return
   clearFile(); const t = token(); setBusy(true)
   try {
     if (file.size > MAX_BYTES) throw new Error('文件最多8MiB。')
@@ -98,6 +107,8 @@ async function readFile(event) {
     if (!parsed.format && !legacySources(parsed).length) throw new Error('文件中没有可选择的旧账号。')
   } catch (e) { if (matches(t)) { document.value = null; error.value = e.message } }
   finally { if (matches(t)) setBusy(false) }
+  await nextTick()
+  if (matches(t) && document.value) await previewFile()
 }
 const body = () => ({ account_id: props.accountId, document: document.value, strategy: document.value?.format ? strategy.value : 'merge', source_account: document.value?.format ? null : sourceKey.value, source_game: document.value?.format ? null : sourceGame.value })
 async function exportFile() {
@@ -140,6 +151,7 @@ onScopeDispose(() => { alive = false; serial++ })
 <style scoped>
 .bond-exchange { min-width: 0; font-size: 14px; }
 .bond-exchange p { margin-block: 12px; }
+.bond-import-items small { font-size: 13px; }
 .bond-import-stats { display: grid; gap: 8px; margin-block: 12px; }
 .bond-import-stats dt { font-weight: 700; }
 .bond-import-stats dd { margin: 0; }
@@ -148,6 +160,8 @@ onScopeDispose(() => { alive = false; serial++ })
 .bond-exchange button, .bond-exchange :is(select, input:not([type="checkbox"])) { min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: var(--surface); font: inherit; box-sizing: border-box; max-width: 100%; min-width: 0; }
 .bond-exchange :is(select, input[type="file"]) { width: 100%; }
 .bond-exchange button, .bond-exchange summary { cursor: pointer; }
+.bond-file-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.bond-file-actions .btn.primary { background: var(--tea); color: var(--on-strong); border-color: var(--tea); }
 .bond-exchange :is(button, select, input):disabled { opacity: .55; cursor: not-allowed; }
 .bond-exchange :is(button, input, select, summary):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 </style>

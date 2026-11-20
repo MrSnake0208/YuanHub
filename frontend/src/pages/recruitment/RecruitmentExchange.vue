@@ -2,36 +2,25 @@
   <DataExchangeDialog :open="open" v-model:tab="tab" :account-name="accountName" :game="game" :busy="loading || committing || exporting" :before-close="closeDialog" @update:open="emit('update:open', $event)">
     <template #import>
       <div ref="importContent" class="exchange-content" tabindex="-1">
-        <ImportGuide :sources="importSources" :step="importStep" :target="accountName" />
         <div class="actions">
-          <button ref="importButton" type="button" :disabled="!canImport || loading || committing || !!submittedIntent" @click="fileInput.value = ''; fileInput.click()">选择文件</button>
-          <button type="button" :aria-pressed="pasteMode" :disabled="!canImport || loading || committing || !!submittedIntent" @click="editPaste">粘贴内容</button>
+          <button ref="importButton" class="primary" type="button" :disabled="!canImport || loading || committing || !!submittedIntent" @click="fileInput.value = ''; fileInput.click()">选择备份文件</button>
           <input ref="fileInput" class="file-input" type="file" aria-label="选择招募记录 JSON" accept=".json,application/json" :disabled="!canImport || loading || committing || !!submittedIntent" @change="selectFile">
-          <button v-if="documentData || submittedIntent || pastedText" type="button" class="text-button" :disabled="loading || committing" @click="resumeImport">继续导入</button>
+          <button v-if="showFilePreviewFallback" type="button" :disabled="!canImport || committing" @click="generatePreview">预览这个文件</button>
         </div>
-        <p class="hint">文件或粘贴内容最多 5 MiB、20,000 条结果。CSV 仅用于查看，不能恢复档案。</p>
-        <button class="text-button guide-link" type="button" :disabled="!game || guideLoading" @click="downloadGuide">{{ guideLoading ? '正在获取规范…' : '获取 AI 导入规范' }}</button>
+        <ImportGuide :sources="importSources" />
         <p v-if="readOnly" class="hint">当前账号暂不能导入，仍可导出。</p>
         <template v-if="success"><p class="success-mark" aria-hidden="true"><CircleCheck :size="32" aria-hidden="true" /></p><h3>已导入 {{ success.events }} 条招募记录</h3><p v-if="success.other">另有 {{ success.other }} 项批次或档案信息已导入。</p><p v-if="success.duplicates">{{ success.duplicates }} 项已有内容未重复添加。</p><p v-if="success.skipped">{{ success.skipped }} 项内容未导入，已保留现有档案。</p><button type="button" :disabled="committing" @click="closeDialog() && emit('update:open', false)">返回招募档案</button></template>
-        <template v-else-if="pasteMode">
-          <form id="recruitment-paste-form" @submit.prevent="previewPaste">
-            <label class="paste-label" for="recruitment-paste-input">JSON 内容</label>
-            <p id="recruitment-paste-hint" class="hint">粘贴 AI 返回的完整 JSON，也支持单个 JSON 代码块。</p>
-            <textarea id="recruitment-paste-input" ref="pasteInput" v-model="pastedText" class="paste-input" aria-describedby="recruitment-paste-hint" :disabled="loading || committing" spellcheck="false" autocomplete="off" placeholder="在这里粘贴 JSON" />
-            <button type="submit" :disabled="!canImport || !pastedText.trim() || loading || committing || !!submittedIntent">{{ loading ? '正在核对…' : '核对内容' }}</button>
-          </form>
-        </template>
-        <template v-else>
-          <button v-if="pastedText && !submittedIntent" class="text-button" type="button" :disabled="loading || committing" @click="editPaste">修改粘贴内容</button>
+        <template v-else-if="!pasteMode">
           <p v-if="filename" class="file-caption">{{ filename }}<span>{{ game }} · 目标：{{ accountName || '当前游戏账号' }}</span></p>
           <p v-if="documentData?.source_account?.account_id && documentData.source_account.account_id !== accountId" class="hint">备份来自另一游戏账号，请确认要导入到此账号。</p>
           <p v-if="loading" class="loading-message" role="status">正在核对文件中的招募记录…</p>
           <form v-if="documentData" @submit.prevent="generatePreview">
             <label v-if="!recordsOnly" class="restore-option">恢复状态<select v-model="options.state_strategy" :disabled="!canImport || loading || committing || !!submittedIntent"><option value="keep_current">保留当前状态（空档案使用备份状态）</option><option value="use_backup">使用备份中的进度、基准与心愿</option></select></label>
             <div v-if="options.confirm_count_change || preview?.items.some(item => item.status === 'count_overlap') || (!recordsOnly && options.state_strategy === 'use_backup' && preview?.items.some(item => item.entity_type === 'state' && item.status === 'add'))" class="overlap-warning"><p>{{ !recordsOnly && options.state_strategy === 'use_backup' ? '备份进度将替换现有进度，同时替换心愿密探，请核对抽数与选择变化。' : '部分记录可能已计入现有抽数，请先核对下方明细。' }}</p><label class="check"><input v-model="options.confirm_count_change" type="checkbox" :disabled="!canImport || loading || committing || !!submittedIntent">{{ !recordsOnly && options.state_strategy === 'use_backup' ? '我已核对，确认使用备份进度、心愿及本次抽数变化' : '我已核对，确认这些记录不会重复计数' }}</label></div>
-            <button v-if="!loading && (!preview || expired) && !submittedIntent" type="submit" :disabled="!canImport || committing">{{ expired ? '更新预览' : '重新核对' }}</button>
+            <button v-if="!loading && (!preview || expired) && !submittedIntent && !showFilePreviewFallback" type="submit" :disabled="!canImport || committing">{{ expired ? '更新预览' : '重新核对' }}</button>
           </form>
           <section v-if="preview" class="preview" aria-label="导入预览">
+            <p class="hint">确认导入后才会写入当前账号，请先核对抽数和档案变化。</p>
             <div class="import-summary"><div><strong>{{ eventCount }}</strong><span>条新增记录</span></div><div><strong>{{ duplicateEvents }}</strong><span>条已有记录</span></div></div>
             <p v-if="otherCount" class="hint">另有 {{ otherCount }} 项批次或档案信息将导入。</p>
             <p class="total-change">已知累计抽数 <span>{{ preview.current_known_total }} <span aria-label="变为">→</span> <strong>{{ preview.candidate_known_total }}</strong> 抽</span></p>
@@ -49,7 +38,20 @@
         </template>
         <p v-if="tab === 'import' && error" ref="errorPanel" class="error" role="alert" tabindex="-1">{{ error }}</p>
         <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
-        <details><summary>技术详情</summary><p>完整备份格式：yuanhub.recruitment.v1；AI 记录格式：{{ RECORD_IMPORT_SCHEMA }}。粘贴支持单个 JSON 代码块；AI 导入规范说明文件不能直接导入。</p></details>
+        <ImportMoreOptions :open="pasteHelpActive || undefined" @toggle="pasteHelpActive && ($event.currentTarget.open = true)">
+          <div class="actions">
+            <button type="button" :aria-pressed="pasteMode" :disabled="!canImport || loading || committing || !!submittedIntent" @click="editPaste">粘贴内容</button>
+            <button v-if="pastedText && !pasteMode && !submittedIntent" class="text-button" type="button" :disabled="loading || committing" @click="editPaste">修改粘贴内容</button>
+          </div>
+          <form v-if="pasteMode" id="recruitment-paste-form" @submit.prevent="previewPaste">
+            <label class="paste-label" for="recruitment-paste-input">备份内容</label>
+            <p id="recruitment-paste-hint">请粘贴 AI 返回的完整内容。</p>
+            <textarea id="recruitment-paste-input" ref="pasteInput" v-model="pastedText" class="paste-input" aria-describedby="recruitment-paste-hint" :disabled="loading || committing" spellcheck="false" autocomplete="off" placeholder="在这里粘贴备份内容" />
+            <button type="submit" :disabled="!canImport || !pastedText.trim() || loading || committing || !!submittedIntent">{{ loading ? '正在核对…' : '核对内容' }}</button>
+          </form>
+          <button class="text-button" type="button" :disabled="!game || guideLoading" @click="downloadGuide">{{ guideLoading ? '正在获取规范…' : '获取 AI 导入规范' }}</button>
+          <ImportGuide :sources="importSources" detail />
+        </ImportMoreOptions>
       </div>
     </template>
     <template #import-footer><button class="primary" type="button" :disabled="pasteMode || !!success || !canImport || !preview?.can_commit || !preview?.stats.added || expired || loading || committing || !!submittedIntent" @click="commit">{{ committing ? '正在导入…' : eventCount ? '确认导入 ' + eventCount + ' 条' : '确认导入' }}</button></template>
@@ -72,6 +74,7 @@
 import { CircleCheck } from '@lucide/vue'
 import DataExchangeDialog from '../../components/DataExchangeDialog.vue'
 import ImportGuide from '../../components/ImportGuide.vue'
+import ImportMoreOptions from '../../components/ImportMoreOptions.vue'
 import { computed, nextTick, onScopeDispose, reactive, ref, watch } from 'vue'
 import { commitRecruitmentImport, exportRecruitment, previewRecruitmentImport, getRecruitmentCatalog } from '../../api/recruitment.js'
 import { getOperatorCatalog } from '../../api/operator.js'
@@ -83,10 +86,10 @@ const documentData = ref(null), filename = ref(''), preview = ref(null), preview
 const pasteMode = ref(false), pastedText = ref(''), pasteInput = ref(null)
 const tab = ref('import'), exportFormat = ref('json'), importContent = ref(null), importButton = ref(null), success = ref(null), showAll = ref(false)
 const importSources = [
-  { title: '本站招募备份', from: '在招募页「导入/导出 → 导出」下载的完整备份（JSON）。' },
-  { title: 'AI 整理的抽卡记录', from: '先点「获取 AI 导入规范」，把规范文件和你的抽卡记录（截图、表格等）一起交给 AI，让它生成 JSON，再用「选择文件」或「粘贴内容」导入。' },
+  { title: '本站招募备份', from: '在招募页「导入/导出 → 导出」下载完整备份。' },
+  { title: 'AI 整理的抽卡记录', from: '把导入规范和抽卡截图或表格一起交给 AI，再选择它生成的备份文件或粘贴内容。' },
 ]
-const importStep = computed(() => committing.value || submittedIntent.value || success.value ? 3 : documentData.value || pastedText.value.trim() || loading.value ? 2 : 1)
+const pasteHelpActive = computed(() => pasteMode.value || !!pastedText.value.trim())
 watch(() => props.open, open => { if (open) tab.value = 'import' })
 function closeDialog() {
   if (loading.value || committing.value || exporting.value) return false
@@ -110,16 +113,13 @@ async function previewPaste() {
     await readImport(pastedText.value, '粘贴的 JSON', token, true)
   } catch (failure) { if (matches(token)) await showError(failure.message || '无法读取粘贴内容') }
 }
-async function resumeImport() {
-  success.value = null; tab.value = 'import'; emit('update:open', true)
-  if (pasteMode.value) { await nextTick(); pasteInput.value?.focus(); return }
-  if (!submittedIntent.value && !pasteMode.value) await generatePreview()
-}
 const submittedIntent = ref(null), guideLoading = ref(false)
 const recordsOnly = computed(() => documentData.value?.schema === RECORD_IMPORT_SCHEMA)
 const options = reactive({ state_strategy: 'keep_current', confirm_count_change: false })
 const canExport = computed(() => !!props.identity && !!props.accountId && !props.busy)
 const canImport = computed(() => canExport.value && !props.readOnly)
+const showFilePreviewFallback = computed(() => !!documentData.value && !pastedText.value && !preview.value &&
+  !error.value && !loading.value && !committing.value && !exporting.value && !submittedIntent.value && !success.value)
 async function openImport() {
   if (!canImport.value) return
   tab.value = 'import'
@@ -278,7 +278,7 @@ onScopeDispose(() => { alive = false; generation++; clearTimeout(expiryTimer) })
 </script>
 
 <style scoped>
-.exchange-content{min-width:0;font-size:14px;line-height:1.7;overflow-wrap:anywhere}.exchange-content p{margin:10px 0}h3{font-family:var(--font-s)}button,summary,select{font:inherit}button,summary{cursor:pointer}button{min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:10px 16px}button:disabled{opacity:.5;cursor:not-allowed}button.primary{background:var(--tea);color:var(--on-strong);border-color:var(--tea)}button.text-button{border:0;background:transparent;padding:4px 0;color:var(--theme-strong-text, var(--tea));text-decoration:underline;text-underline-offset:4px}.hint,.file-caption{color:var(--ink-60)}.file-input{display:none}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:16px 0 10px}.guide-link{font-size:13px}.file-caption{font-size:13px}.file-caption span{display:block}.restore-option{display:flex;flex-direction:column;gap:6px;margin:18px 0;font-size:13px}.check{display:flex;align-items:flex-start;gap:8px;font-size:13px}.check input{margin-top:5px;flex:none}.import-summary{display:flex;margin:24px 0 18px}.import-summary strong{display:block;font-variant-numeric:tabular-nums;font-weight:500}.import-summary span{font-size:13px;color:var(--ink-60)}.total-change{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;padding:12px 14px;background:var(--cream);border-radius:10px;font-variant-numeric:tabular-nums}.list-title{font-size:15px;margin:24px 0 6px}.preview-items{list-style:none;padding:0;margin:0 0 12px}.preview-items li{padding:12px 0;border-bottom:1px solid var(--line)}.preview-items li>div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px}.preview-items strong{font-weight:500}.preview-items p{font-size:13px;margin:6px 0 0}.preview-items span{color:var(--ink-60);font-size:12px;white-space:nowrap}.error,.risks{color:var(--theme-danger-text, var(--rouge))}.risks{padding-left:20px;font-size:13px}.overlap-warning{background:var(--cream);border-inline-start:3px solid var(--rouge);padding:12px}.success-mark{color:var(--theme-strong-text, var(--tea));font-size:36px}.restore-option select{min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--cream);color:var(--ink);padding:10px;min-width:0;max-width:100%}.retry-intent{margin-top:18px}.export-choices{min-width:0;margin:16px 0;padding:0;border:0}.export-choice{display:flex;align-items:center;gap:10px;min-height:44px;margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:10px;cursor:pointer}.export-choice input{flex:none;accent-color:var(--accent)}.export-choice span{min-width:0}.export-choice strong,.export-choice small{display:block}.export-choice small{color:var(--ink-60)}.export-choice:has(:checked){border-color:var(--accent);background:var(--cream)}button:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}
+.exchange-content{min-width:0;font-size:14px;line-height:1.7;overflow-wrap:anywhere}.exchange-content p{margin:10px 0}h3{font-family:var(--font-s)}button,select{font:inherit}button{cursor:pointer}button{min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:10px 16px}button:disabled{opacity:.5;cursor:not-allowed}button.primary{background:var(--tea);color:var(--on-strong);border-color:var(--tea)}button.text-button{border:0;background:transparent;padding:4px 0;color:var(--theme-strong-text, var(--tea));text-decoration:underline;text-underline-offset:4px}.hint,.file-caption{color:var(--ink-60)}.file-input{display:none}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:16px 0 10px}.file-caption{font-size:13px}.file-caption span{display:block}.restore-option{display:flex;flex-direction:column;gap:6px;margin:18px 0;font-size:13px}.check{display:flex;align-items:flex-start;gap:8px;font-size:13px}.check input{margin-top:5px;flex:none}.import-summary{display:flex;margin:24px 0 18px}.import-summary strong{display:block;font-variant-numeric:tabular-nums;font-weight:500}.import-summary span{font-size:13px;color:var(--ink-60)}.total-change{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;padding:12px 14px;background:var(--cream);border-radius:10px;font-variant-numeric:tabular-nums}.list-title{font-size:15px;margin:24px 0 6px}.preview-items{list-style:none;padding:0;margin:0 0 12px}.preview-items li{padding:12px 0;border-bottom:1px solid var(--line)}.preview-items li>div{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px}.preview-items strong{font-weight:500}.preview-items p{font-size:13px;margin:6px 0 0}.preview-items span{color:var(--ink-60);font-size:13px;white-space:nowrap}.error,.risks{color:var(--theme-danger-text, var(--rouge))}.risks{padding-left:20px;font-size:13px}.overlap-warning{background:var(--cream);border-inline-start:3px solid var(--rouge);padding:12px}.success-mark{color:var(--theme-strong-text, var(--tea));font-size:36px}.restore-option select{min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--cream);color:var(--ink);padding:10px;min-width:0;max-width:100%}.retry-intent{margin-top:18px}.export-choices{min-width:0;margin:16px 0;padding:0;border:0}.export-choice{display:flex;align-items:center;gap:10px;min-height:44px;margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:10px;cursor:pointer}.export-choice input{flex:none;accent-color:var(--accent)}.export-choice span{min-width:0}.export-choice strong,.export-choice small{display:block}.export-choice small{color:var(--ink-60)}.export-choice:has(:checked){border-color:var(--accent);background:var(--cream)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:3px}
 .paste-label{display:block;margin-top:18px;font-weight:600}.paste-input{display:block;box-sizing:border-box;width:100%;resize:vertical;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--cream);color:var(--ink);font:14px/1.6 monospace}
 </style>
 <style scoped src="./recruitmentExchangeDesktop.css"></style>

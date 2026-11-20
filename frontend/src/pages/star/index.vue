@@ -53,13 +53,12 @@
           <DataExchangeDialog v-model:open="showArchive" v-model:tab="starExchangeTab" :account-name="selectedHostAccount()?.displayName" :game="accountGame" :busy="starExchangeBusy">
             <template #import>
               <section class="star-exchange-content star-exchange-import">
-                <ImportGuide :sources="[{ title: '本站星石备份', from: '在星石页「导入/导出」里导出的备份。' }, { title: 'MaaYuan 识别结果', from: 'MaaYuan 本地完整识别后保存的结果文件（JSON）。' }]" :step="starExchangeBusy && starImportPreview ? 3 : starImportPreview || starExchangeBusy ? 2 : 1" :target="selectedHostAccount()?.displayName" />
-                <p class="tip">游戏截图请使用页面上的「导入截图」，不在这里导入。文件最多20 MB；核对目标账号及预览后确认。</p>
-                <button type="button" class="btn ghost file-label" :disabled="!productReady || starExchangeBusy" @click="starImportFile.click()">选择 JSON 文件</button>
+                <button type="button" class="btn primary file-label touch-target" :disabled="!productReady || starExchangeBusy" @click="starImportFile.click()">选择备份文件</button>
                 <input ref="starImportFile" type="file" hidden accept=".json,application/json" :disabled="!productReady || starExchangeBusy" @change="onStarImportFile" />
+                <ImportGuide :sources="starImportSources" />
                 <div v-if="starImportPreview" class="star-exchange-preview">
                   <dl>
-                    <div><dt>文件</dt><dd>{{ starImportPreview.preview.fileName }} · {{ starImportPreview.preview.format.toUpperCase() }}</dd></div>
+                    <div><dt>文件</dt><dd>{{ starImportPreview.preview.fileName }}</dd></div>
                     <div v-if="!starImportPreview.preview.maayuan"><dt>星石</dt><dd>{{ starImportPreview.preview.inventoryCount }} 颗，其中 {{ starImportPreview.preview.plannedCount }} 颗有计划等级</dd></div>
                     <template v-if="starImportPreview.preview.maayuan">
                       <div><dt>类型</dt><dd>{{ starImportPreview.preview.sourceLabel }}</dd></div>
@@ -69,12 +68,15 @@
                     <div><dt>背包</dt><dd>{{ starImportPreview.preview.bag.currentCount ?? '—' }} / {{ starImportPreview.preview.bag.capacity ?? '—' }}</dd></div>
                     <div><dt>经验星曜</dt><dd>橙 {{ starImportPreview.preview.experience.orange ?? '未知' }} · 紫 {{ starImportPreview.preview.experience.purple ?? '未知' }} · 白 {{ starImportPreview.preview.experience.white ?? '未知' }}</dd></div>
                   </dl>
+                  <p class="tip">请核对目标账号和预览内容后确认替换。</p>
                   <p v-if="starImportPreview.preview.maayuan" class="tip">将使用本次识别结果更新当前星石背包和经验星曜。原有佩戴与养成计划按现有保护和继承规则处理。</p>
                   <p v-if="starImportPreview.preview.alreadySynced" class="tip">本批次或相同完整结果已保存，确认不会重复重建背包。</p>
                   <p v-if="!starImportPreview.preview.maayuan" class="tip">确认后将替换当前账号的星石背包、养成计划和经验星曜，无法恢复密探佩戴关系或识别原始资料。</p>
                 </div>
                 <p v-if="starExchangeError" class="star-exchange-error" role="alert">{{ starExchangeError }}</p>
-                <details><summary>技术详情</summary><p>档案格式：JSON · v2。MaaYuan 识别结果按文件内容识别，不按文件名判断。</p></details>
+                <ImportMoreOptions>
+                  <ImportGuide :sources="starImportSources" detail />
+                </ImportMoreOptions>
               </section>
             </template>
             <template #import-footer><button type="button" class="btn primary" :disabled="!productReady || !starImportPreview || starExchangeBusy" @click="confirmStarImport">{{ starExchangeBusy ? '替换中…' : '确认替换' }}</button></template>
@@ -188,6 +190,7 @@ import { bagReviewInfo, createBagTutorialGate } from "./bagTutorial.js";
 import DataAccountContextBar from "../../components/DataAccountContextBar.vue";
 import DataExchangeDialog from "../../components/DataExchangeDialog.vue";
 import ImportGuide from "../../components/ImportGuide.vue";
+import ImportMoreOptions from "../../components/ImportMoreOptions.vue";
 import AccountShareManager from "../../components/AccountShareManager.vue";
 import IslandSidebar from "../../components/IslandSidebar.vue";
 import SiteFooter from "../../components/SiteFooter.vue";
@@ -342,6 +345,10 @@ async function checkRecognitionTutorial() {
 }
 const showArchive = ref(false);
 const starExchangeTab = ref("import");
+const starImportSources = [
+  { title: "本站星石备份", from: "在星石页「导入/导出」里导出的备份。" },
+  { title: "MaaYuan 识别结果", from: "MaaYuan 完整识别后保存的结果文件。游戏截图请用页面上的「导入截图」。" },
+];
 const starExportScope = ref("current");
 const showShare = ref(false);
 const starImportPreview = ref(null);
@@ -574,7 +581,7 @@ async function exportStarArchive() {
 }
 async function onStarImportFile(event) {
   const file = event?.target?.files?.[0];
-  if (!file || !handle || !productReady.value) return;
+  if (!file || !handle || !productReady.value || starExchangeBusy.value) return;
   const source = handle, context = starContextVersion, identity = accountIdentityVersion;
   const host = selectedHostAccount(), selection = ++starImportSelection;
   const current = () => !unmounted && source === handle && context === starContextVersion && identity === accountIdentityVersion && selection === starImportSelection && productReady.value;
@@ -843,9 +850,8 @@ onBeforeUnmount(function () {
 }
 .star-exchange-content { min-width: 0; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
 .star-exchange-import.star-exchange-content { margin-top: 0; padding-top: 0; }
-.star-exchange-content p, .star-exchange-content details { margin-block: 12px; }
-.star-exchange-content summary { cursor: pointer; }
-.star-exchange-content :is(button, input, summary):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
+.star-exchange-content p { margin-block: 12px; }
+.star-exchange-content :is(button, input):focus-visible { outline: 2px solid var(--theme-focus, var(--accent)); outline-offset: 3px; }
 .star-export-options { min-width: 0; border: 0; margin: 16px 0; padding: 0; }
 .star-export-option { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 12px; margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
 .star-export-option input { flex: none; accent-color: var(--accent); }
@@ -853,6 +859,7 @@ onBeforeUnmount(function () {
 .star-export-option strong, .star-export-option small { display: block; }
 .star-export-option small { color: var(--ink-60); }
 .star-exchange-import .tip { color: var(--ink-60); }
+.star-exchange-import :is(.tip, .star-exchange-error, dt, dd) { font-size: 13px; }
 .star-exchange-import .file-label { min-height: 44px; cursor: pointer; }
 .star-exchange-error { color: var(--theme-danger-text, var(--rouge)); }
 .star-exchange-preview { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
