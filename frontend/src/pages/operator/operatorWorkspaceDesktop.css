@@ -93,8 +93,6 @@
 .scan-review-context { margin-top: 0; }
 .scan-review-context li { margin: 4px 0; font-size: 12px; }
 .scan-review-context button { margin-top: 12px; }
-.import-technical pre { max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
-.import-technical summary { display: flex; align-items: center; min-height: 44px; }
 .backup-import h2 { margin-top: 0; font: 900 20px var(--font-s); }
 .orphan-current { margin: 20px 0; padding: 16px; }
 .orphan-current p { margin: 0 0 12px; font-size: 14px; line-height: 1.6; }

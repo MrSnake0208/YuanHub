@@ -33,15 +33,16 @@
       <DataExchangeDialog v-model:open="backupOpen" v-model:tab="backupTab" title="信赖与传闻备份" :account-name="accountName" :game="game" :busy="saving" :before-close="cancel">
         <template #import>
           <div class="relationships relationships-exchange">
-            <ImportGuide :sources="[{ title: '本站信赖与传闻备份', from: '在「更多 → 信赖与传闻备份」的导出页签下载的完整备份。' }]" :step="saving || notice === '信赖与传闻备份已恢复' && !importText.trim() ? 3 : importText.trim() || preview ? 2 : 1" :target="accountName" />
-            <button type="button" :disabled="saving || loading" @click="refresh">重新读取</button>
-            <p>仅备份当前账号的信赖与传闻记录，含列表之外的历史记录；与练度 JSON 分开，不包含奖励计算结果。</p>
-            <label>读取备份（最大 1 MiB）<input type="file" accept="application/json,.json" :disabled="!ready || dirty" @change="readFile" /></label>
-            <label>备份内容<textarea v-model="importText" rows="4" :disabled="saving || dirty" @input="preview = null; fileSequence++" /></label>
-            <label><input v-model="overwrite" type="checkbox" :disabled="saving || dirty" @change="preview = null" />使用备份覆盖冲突值（默认保留当前记录）</label>
-            <button type="button" :disabled="!ready || dirty || !importText.trim()" @click="prepareImport">预览恢复</button>
+            <div class="relationship-file-actions">
+              <button class="btn primary relationship-file-button" type="button" :disabled="!ready || dirty" @click="backupFileInput.click()">选择备份文件</button>
+              <input ref="backupFileInput" type="file" hidden accept="application/json,.json" :disabled="!ready || dirty" @change="readFile" />
+              <button v-if="importFromFile && importText.trim() && !preview && !localError && !error && !saving && !loading" type="button" :disabled="!ready || dirty || !importText.trim()" @click="prepareImport">预览这个文件</button>
+            </div>
+            <ImportGuide :sources="relationshipImportSources" />
+            <label v-if="importText.trim()"><input v-model="overwrite" type="checkbox" :disabled="saving || dirty" @change="onOverwriteChange" />使用备份覆盖冲突值（默认保留当前记录）</label>
             <div v-if="preview" class="relationships-preview">
               <p>恢复到 {{ accountName }} · {{ game }}；将修改 {{ preview.changes }} 个进度值，发现 {{ preview.conflicts }} 个冲突。</p>
+              <p>确认导入后才会更新当前账号的记录。</p>
               <p>{{ overwrite ? '冲突项采用备份中的值。' : '冲突项保留当前记录，仅补充未记录项。' }}</p>
               <details v-if="preview.changes"><summary>查看将修改的进度</summary><ul>
                 <template v-for="(fields, id) in preview.entries" :key="id"><li v-for="(next, kind) in fields" :key="id + kind">{{ operatorMap[id]?.name || id }} · {{ labels[kind] }}：{{ value(id, kind) ?? '未记录' }} → {{ next }}</li></template>
@@ -49,8 +50,13 @@
               <button type="button" :disabled="saving" @click="preview = null">取消预览</button>
             </div>
             <p v-if="(!editing && localError) || error" role="alert">{{ localError || error }}</p>
+            <button v-if="error && !ready" type="button" :disabled="saving || loading" @click="refresh">重新读取</button>
             <p class="action-feedback" v-if="notice" role="status">{{ notice }}</p>
-            <details><summary>技术详情</summary><p>格式：yuanhub-relationships，schema_version=1；最多 1 MiB / 1000 位密探。</p></details>
+            <ImportMoreOptions :open="importPasteActive || undefined" @toggle="importPasteActive && ($event.currentTarget.open = true)">
+              <label>备份内容<textarea v-model="importText" rows="4" :disabled="saving || dirty" @input="importFromFile = false; localError = ''; preview = null; fileSequence++" /></label>
+              <button type="button" :disabled="!ready || dirty || !importText.trim()" @click="prepareImport">预览恢复</button>
+              <ImportGuide :sources="relationshipImportSources" detail />
+            </ImportMoreOptions>
           </div>
         </template>
         <template #import-footer><button class="btn primary" type="button" :disabled="!ready || !preview?.changes" @click="restore">{{ saving ? '恢复中…' : '确认导入' }}</button></template>
@@ -73,6 +79,7 @@ import { avatarUrl } from '../../api/request.js'
 import OperatorRelationshipDialog from '../../components/operator/OperatorRelationshipDialog.vue'
 import DataExchangeDialog from '../../components/DataExchangeDialog.vue'
 import ImportGuide from '../../components/ImportGuide.vue'
+import ImportMoreOptions from '../../components/ImportMoreOptions.vue'
 import { downloadBlob } from '../../utils/downloadFile.js'
 import { useOperatorRelationships } from '../../composables/useOperatorRelationships.js'
 import { useUnsavedChanges } from '../../utils/useUnsavedChanges.js'
@@ -86,6 +93,11 @@ const operatorMap = computed(() => Object.fromEntries(props.allOperators.map(ite
 const labels = { trust: '信赖值', rumors: '传闻数量' }
 const editing = ref(''), draft = ref({ trust: '', rumors: '' }), baseline = ref({ trust: '', rumors: '' })
 const localError = ref(''), notice = ref(''), importText = ref(''), overwrite = ref(false), preview = ref(null)
+const relationshipImportSources = [
+  { title: '本站信赖与传闻备份', from: '在「更多 → 信赖与传闻备份」的导出页签下载的完整备份。' },
+]
+const backupFileInput = ref(null), importFromFile = ref(false)
+const importPasteActive = computed(() => !importFromFile.value && !!importText.value.trim())
 const resolveTrust = ref(false)
 const backupOpen = ref(false), backupTab = ref('import')
 watch(backupOpen, open => { if (open) backupTab.value = 'import' })
@@ -108,7 +120,7 @@ async function beforeLeave() {
   if (saving.value) return false
   const key = scope.value.key
   if (!await confirmDiscard() || key !== scope.value.key || saving.value) return false
-  fileSequence++; backupOpen.value = false; editing.value = ''; resolveTrust.value = false; importText.value = ''; preview.value = null; return true
+  fileSequence++; backupOpen.value = false; editing.value = ''; resolveTrust.value = false; importText.value = ''; importFromFile.value = false; preview.value = null; return true
 }
 async function edit(id) {
   if (!ready.value || !await beforeLeave()) return
@@ -143,15 +155,24 @@ async function readFile(event) {
   try {
     if (file.size > RELATIONSHIP_BACKUP_LIMIT) throw new Error('备份不能超过 1 MiB')
     const text = await file.text()
-    if (key === scope.value.key && sequence === fileSequence) { importText.value = text; prepareImport() }
+    if (key !== scope.value.key || sequence !== fileSequence) return
+    importText.value = text
+    importFromFile.value = true
+    if (!text.trim()) throw new Error('备份文件没有内容，请重新选择。')
+    prepareImport()
   } catch (err) { if (key === scope.value.key && sequence === fileSequence) localError.value = err.message }
 }
 function prepareImport() {
+  if (!ready.value || dirty.value || !importText.value.trim()) return
   localError.value = ''; notice.value = ''; preview.value = null
   try {
     const incoming = readRelationshipBackup(importText.value, props.game, props.allOperators)
     preview.value = { ...previewRelationshipImport(incoming, records.value, rules.value, overwrite.value), key: scope.value.key, revision: data.value.revision }
   } catch (err) { localError.value = err.message }
+}
+function onOverwriteChange() {
+  preview.value = null
+  if (importFromFile.value) prepareImport()
 }
 async function restore() {
   const pending = preview.value
@@ -159,9 +180,13 @@ async function restore() {
   if (await save(pending.entries, pending.revision) && pending.key === scope.value.key) { importText.value = ''; preview.value = null; notice.value = '信赖与传闻备份已恢复' }
 }
 watch(() => scope.value.key, () => {
-  fileSequence++; backupOpen.value = false; editing.value = ''; resolveTrust.value = false; localError.value = ''; notice.value = ''; importText.value = ''; preview.value = null; overwrite.value = false
+  fileSequence++; backupOpen.value = false; editing.value = ''; resolveTrust.value = false; localError.value = ''; notice.value = ''; importText.value = ''; importFromFile.value = false; preview.value = null; overwrite.value = false
 }, { flush: 'sync' })
 defineExpose({ beforeLeave, saving, openBackup, ready })
 </script>
 <style scoped src="./operatorPortraitGrid.css"></style>
 <style scoped src="./operatorRelationshipsMobile.css"></style>
+<style scoped>
+.relationship-file-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.relationships-exchange button.btn.relationship-file-button { color: var(--on-strong); background: var(--tea); }
+</style>
