@@ -136,7 +136,10 @@ tasks.withType<Test>().configureEach {
     systemProperties(safeTestProperties)
     environment = environment.filterKeys { key ->
         !key.startsWith("SPRING_") && !key.startsWith("SHARE_") && !key.startsWith("YUANHUB_BETA_") &&
-            key !in setOf("PLANNER_TEST_MONGO_URI", "BETA_TEST_MONGO_URI", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS")
+            key !in setOf(
+                "PLANNER_TEST_MONGO_URI", "BETA_TEST_MONGO_URI", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS",
+                "YUANHUB_OPENAPI_STORAGE_KEY", "YUANHUB_RELEASE_METADATA_TOKEN",
+            )
     }
     maxParallelForks = 1
     maxHeapSize = "1g"
@@ -159,6 +162,7 @@ val integrationTest = isolatedSuite("integrationTest", "integration")
 val criticalTestClasses = listOf(
     "CatalogGameLinkMongoTest",
     "AccountIndexMongoTest",
+    "LoginSessionMongoTest",
     "CalendarPrivateItemMongoTest",
     "OperatorShareMongoTest",
     "StarInventorySyncMongoTest",

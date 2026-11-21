@@ -113,9 +113,9 @@ curl --fail-with-body -X PATCH "$API_BASE_URL/user/open-api/tokens/$TOKEN_ID/sco
   -d '{"scopes":["operator:scan:write","inventory:write","inventory:read"]}' | jq
 ```
 
-更新会立即同步到 MongoDB 和无过期 Redis 缓存，新增权限立即可用、移除权限立即失效；Token 明文不会
+鉴权读取 MongoDB 中的当前权限，新增权限立即可用、移除权限立即失效；Token 明文不会
 改变，也无需在 MaaYuan 中重新填写。创建返回 Token 明文；后续本人 JWT 可按需通过 secret 接口复制，禁止缓存。列表和权限更新响应均不返回明文。
-当前 Token 仍不会自动过期。
+当前 Token 仍不会自动过期。新记录保存 SHA-256 摘要和用于本人复制的 AES-GCM 密文，旧连接无需重新填写。密钥配置和历史凭据迁移见[操作手册](../docs/monorepo-operations.md#认证和连接码版本的上线准备)。
 
 > **统一子账号说明（2026-08）**：`/v1/inventory/accounts` 与 `/v1/operator/accounts` 已合并为
 > **`/v1/accounts`**（POST 创建 / GET 列表 / PATCH 修改 / DELETE 删除）。子账号对库存、密探、
@@ -589,13 +589,14 @@ src/main/kotlin/com/lhs/share/
 | POST /user/register | 用户注册(邮箱验证码) | 匿名 |
 | POST /user/sendRegistrationToken | 发送注册验证码 | 匿名 |
 | POST /user/login | 登录,返回 access+refresh token | 匿名 |
-| POST /user/refresh | 刷新 token | 匿名(无状态校验) |
+| POST /user/logout | 撤销本设备登录 | 持有效 refresh token |
+| POST /user/refresh | 刷新 token | 持有效 refresh token |
 | POST /user/update/password | 修改密码(原密码,10 分钟频率限制) | 需登录 |
 | POST /user/update/info | 修改用户名 | 需登录 |
 | POST /user/password/reset_request | 发送重置密码验证码 | 公开 |
 | POST /user/password/reset | 邮箱验证码重置密码 | 公开 |
 | GET /user/info?userId= | 查询用户公开信息(404 语义) | 公开 |
-| GET /user/search?userName=&page=&size= | 用户模糊搜索(size 上限 50) | 公开 |
+| GET /user/search?userName=&page=&size= | 用户搜索（至少 2 字，size 上限 50） | JWT |
 
 ### 字段命名约定
 
@@ -603,9 +604,9 @@ src/main/kotlin/com/lhs/share/
 
 ### 验证码机制
 
-- 6 位随机码,存 Redis(`vCodeEmail:{email}`),默认 600 秒过期(`share.vcode.expire`);
-- 发送间隔限制:一个过期周期内最多重发 10 次(`HasBeenSentVCode:{email}`);
-- **一次性**:校验通过即删除(Redis Lua 原子操作),防止重放;
+- 使用安全随机源均匀生成 6 位大写字母数字码。Redis 按用途和邮箱隔离，默认有效期 600 秒。
+- 正确码最多使用一次；同一码累计输错 5 次立即失效。注册与找回提交另共享每邮箱 16 次/120 秒预算，重发不能清除预算。
+- 同用途发码间隔 60 秒；重复请求统一受理。改密保留账号启用状态。
 - 本地调试:`debug.email.no-send: true` 时不真实发邮件,验证码打印到日志。
 
 ### 邮件配置
@@ -629,7 +630,7 @@ share:
 - AccessToken 默认 6 小时(`share.jwt.expire`),RefreshToken 默认 7 天(`share.jwt.refresh-expire`);
 - 需登录接口默认受 Spring Security 保护,请求头携带 `Authorization: Bearer <token>`;
 - 权限模型与原项目一致:status 为几即拥有 0..status 的 authority;
-- 改密/重置密码后,旧的 refresh token 因 `pwdUpdateTime` 校验而失效。
+- 改密/重置密码后,旧的 access 与 refresh token 均失效。
 
 ### 硬性约定(与原项目共享数据)
 

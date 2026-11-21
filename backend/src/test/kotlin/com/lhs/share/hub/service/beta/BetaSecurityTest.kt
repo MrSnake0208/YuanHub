@@ -37,6 +37,9 @@ import java.time.Instant
 )
 @AutoConfigureMockMvc
 class BetaSecurityTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    lateinit var loginSessions: com.lhs.share.service.jwt.LoginSessions
+
     @MockitoBean(answers = org.mockito.Answers.RETURNS_DEEP_STUBS)
     lateinit var redis: org.springframework.data.redis.core.StringRedisTemplate
 
@@ -72,6 +75,7 @@ class BetaSecurityTest {
         mvc.perform(get("/v1/beta/me")).andExpect(status().isUnauthorized)
         mvc.perform(post("/v1/beta/test-reset")).andExpect(status().isUnauthorized)
         mvc.perform(get("/v1/accounts")).andExpect(status().isUnauthorized)
+        mvc.perform(get("/user/search").param("userName", "ab")).andExpect(status().isUnauthorized)
     }
 
     @Test

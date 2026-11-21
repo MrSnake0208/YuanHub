@@ -43,8 +43,6 @@ import com.lhs.share.hub.service.inventory.InventoryApiException
 import com.lhs.share.openapi.OpenApiPermission
 import com.lhs.share.openapi.OpenApiStarInventorySyncController
 import com.lhs.share.openapi.OpenApiTokenService
-import com.lhs.share.openapi.TokenCacheData
-import com.lhs.share.repository.RedisCache
 import com.lhs.share.testinfra.TestMongo
 import io.mockk.every
 import io.mockk.mockk
@@ -467,9 +465,7 @@ class StarInventorySyncMongoTest {
                 remark = null,
             ),
         )
-        val redis = mockk<RedisCache>()
-        every { redis.getCache(any(), TokenCacheData::class.java) } returns null
-        val tokens = OpenApiTokenService(tokenRepo, accountsRepo, redis, mockk<BetaService>(relaxed = true))
+        val tokens = OpenApiTokenService(tokenRepo, accountsRepo, mockk(), mockk<BetaService>(relaxed = true))
         val controller = OpenApiStarInventorySyncController(tokens, service())
         val factory = TomcatServletWebServerFactory(0).apply {
             address = InetAddress.getByName("127.0.0.1")

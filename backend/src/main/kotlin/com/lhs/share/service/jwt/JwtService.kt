@@ -14,7 +14,7 @@ import java.time.Instant
 @Service
 class JwtService(properties: ShareProperties) {
     private val jwtProperties = properties.jwt
-    private val key = jwtProperties.secret.toByteArray()
+    private val key = jwtProperties.secret.also { require(it.isNotBlank()) { "JWT signing key is required" } }.toByteArray()
 
     /**
      * 签发 AuthToken,过期时间由配置的 share.jwt.expire 计算而来
@@ -24,10 +24,15 @@ class JwtService(properties: ShareProperties) {
      * @param authorities 授予的权限
      * @return JwtAuthToken
      */
-    fun issueAuthToken(subject: String, jwtId: String?, authorities: Collection<GrantedAuthority>): JwtAuthToken {
+    fun issueAuthToken(
+        subject: String,
+        jwtId: String?,
+        authorities: Collection<GrantedAuthority>,
+        refreshIssuedAt: Instant? = null,
+    ): JwtAuthToken {
         val now = Instant.now()
         val expireAt = now.plusSeconds(jwtProperties.expire)
-        return JwtAuthToken(subject, jwtId, now, expireAt, now, authorities, key)
+        return JwtAuthToken(subject, jwtId, now, expireAt, now, authorities, key, refreshIssuedAt)
     }
 
     /**
@@ -53,8 +58,7 @@ class JwtService(properties: ShareProperties) {
      * @param jwtId   jwt 的 id,一般用于有状态(stateful)场景
      * @return JwtRefreshToken
      */
-    fun issueRefreshToken(subject: String, jwtId: String?): JwtRefreshToken {
-        val now = Instant.now()
+    fun issueRefreshToken(subject: String, jwtId: String?, now: Instant = Instant.now()): JwtRefreshToken {
         val expireAt = now.plusSeconds(jwtProperties.refreshExpire)
         return JwtRefreshToken(subject, jwtId, now, expireAt, now, key)
     }

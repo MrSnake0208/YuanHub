@@ -93,7 +93,7 @@ Authorization: Bearer <access-token>
 
 - access token 有效期：21600 秒（6 小时）。
 - refresh token 有效期：604800 秒（7 天）。
-- refresh token 签发后 5 分钟内刷新会复用原 refresh token，否则签发新的 refresh token。
+- refresh token 签发后 5 分钟内刷新会复用原 refresh token，否则轮换。弱网重试可取回已签发的后继凭据。已有登录下次刷新时自动升级，改密撤销各设备旧会话。
 - `/user/login`、`/user/register`、`/user/sendRegistrationToken` 是 anonymous-only；已认证请求不应携带 JWT 调用它们。
 
 #### 第三方 OpenAPI Token
@@ -114,7 +114,7 @@ Authorization: Bearer <open-api-token>
 无需 JWT 的主要接口：
 
 - `GET /`、`GET /version`
-- 用户登录、注册、验证码、密码重置、刷新、公开信息和搜索
+- 用户登录、注册、验证码、密码重置、刷新、持 refresh token 登出和按 ID 查公开信息
 - `GET /hub/post/**`
 - `GET /v1/inventory/catalog`
 - `GET /v1/operator/catalog`
@@ -167,9 +167,9 @@ Authorization: Bearer <open-api-token>
 
 匿名接口。请求：`{"email":"xx@example.com"}`。
 
-- 邮件验证码有效期 600 秒。
-- 重发间隔 60 秒；过快返回 403 `发送验证码的请求至少需要间隔 60 秒`。
-- 用户已存在返回 400 `用户已存在`。
+- 邮件验证码有效期 600 秒，仅用于本次注册或密码重置；错满 5 次需重新取码。升级前已经发出的旧格式验证码需要重发。
+- 60 秒内重复发码返回相同受理结果，合并投递。
+- 已注册和未注册邮箱均返回相同的受理结果；只有符合条件的邮箱会收到邮件。
 - 本地 `debug.email.no-send=true` 时验证码只写后端日志。
 
 #### POST /user/register
@@ -197,11 +197,12 @@ Authorization: Bearer <open-api-token>
 | `POST /user/password/reset_request` | 公开 | `{email}` | 无业务数据 |
 | `POST /user/password/reset` | 公开 | `{email,active_code,password}` | 无业务数据 |
 | `POST /user/refresh` | 公开 | `{refresh_token}` | 与登录成功相同 |
+| `POST /user/logout` | 当前 refresh token，建议同时携带当前 access token | `{refresh_token}` | 撤销本设备会话 |
 | `POST /user/update/password` | JWT | `{original_password,new_password}` | 无业务数据 |
 
 补充规则：
 
-- 重置验证码错误返回 401 `验证码错误`；邮箱不存在返回 404 `找不到用户`。
+- 邮箱不存在或重置验证码无效均返回 401。注册与重置校验共享邮箱预算，每 120 秒最多 16 次；登录另计，成功后清除该邮箱的登录计数。超限返回 429 和 Retry-After。
 - `new_password` 长度 8..32。
 - 当前密码错误、缺少原密码或 10 分钟内修改过于频繁均返回业务错误。
 
@@ -210,10 +211,10 @@ Authorization: Bearer <open-api-token>
 | 方法与路径 | 认证 | 参数/请求 | 成功 data |
 |---|---|---|---|
 | `GET /user/info` | 公开 | query `userId` | `MaaUserInfo` |
-| `GET /user/search` | 公开 | query `userName,page=1,size=10` | `MaaUserInfo[]` |
+| `GET /user/search` | JWT | query `userName,page=1,size=10` | `MaaUserInfo[]` |
 | `POST /user/update/info` | JWT | `{user_name}` | 无业务数据 |
 
-- 搜索只返回已激活用户，`size <= 50`。
+- 搜索按字面量匹配已激活用户，关键词 2..48 个字符，page ≥ 1，size 为 1..50。
 - 用户名长度 4..24；重名返回 400 `用户名已存在,请重新取个名字吧`。
 
 ## 3. 统一子账号（/v1/accounts）
@@ -708,7 +709,7 @@ v3 commit 计数和 `items` 结构相同，但不含 preview 顶层 format/versi
 
 `public_consent` 默认 false，与 `client_info_consent` 独立，私有详情会返回授权状态。未授权无需标题；授权后 `title` 必填（最多 120 字符），空标题返回业务 400。授权不自动发布。`PATCH /v1/admin/feedback/{id}/publish` 在既有管理权限之外要求明确授权，否则返回业务 403 且不写入。管理员不能代替用户授予授权。缺少字段的旧记录按未授权处理，历史公开内容不自动撤下，仍允许取消公开。新前端协议需要同时加载本次后端改动。
 
-候选用户接口是反馈权限配置专用接口，不扩展公开 /user/search 或 MaaUserInfo。邮箱只用于超级管理员检索和确认页面，授权文档仍以 user_id 为主键；保存时后端会重新查询用户并拒绝不存在或未激活用户。搜索词按普通文本匹配，不作为原始正则表达式执行。
+候选用户接口是反馈权限配置专用接口，不扩展登录用户搜索 /user/search 或 MaaUserInfo。邮箱只用于超级管理员检索和确认页面，授权文档仍以 user_id 为主键；保存时后端会重新查询用户并拒绝不存在或未激活用户。搜索词按普通文本匹配，不作为原始正则表达式执行。
 
 `GET /v1/reports/access` 的 `available_categories`、`available_areas` 和 `available_work_areas` 来自同一份后端板块目录，普通用户与管理员一致。超级管理员新增板块后，后端生成不可变的 `CUSTOM_...` 标识；改名只改变展示名称，工单和授权仍引用原标识。板块目录变更冲突返回 409，普通管理员写接口返回 403。板块不提供删除接口，以保留历史工单归属。
 
@@ -1165,7 +1166,7 @@ error_count / conflict_count / conflicts / errors / catalog_version
 ### 13.1 系统
 
 - `GET /`：公开健康提示，返回普通包装，message 为 `Share Server is Running`，data 为 null。
-- `GET /version`：公开，返回 `{title,description,version,git}`。
+- `GET /version`：公开，返回标题、描述、后端与产品版本号；Git 信息仅供受控发布检查。
 - `GET /ready`：仅 local profile 的 readiness 检查，不应作为生产公共契约依赖。
 
 ### 13.2 Hub Post 示例业务

@@ -10,8 +10,8 @@ import java.time.Instant
  * 第三方 API Token(HubBackend.open_api_token)
  *
  * userId 引用 MaaBackend.maa_user.userId,跨库无法 join。token 为
- * 无连字符 UUID,唯一索引保证不重复;scope 存 OpenApiPermission.code 列表。
- * token 热数据同时存 Redis(见 OpenApiTokenService),本集合为持久化权威来源。
+ * 带前缀的 SHA-256 摘要（旧行待迁移）,唯一索引保证不重复;scope 存 OpenApiPermission.code 列表。
+ * encryptedSecret 保存供本人再次复制的 AES-GCM 密文。
  */
 @Document("open_api_token")
 data class OpenApiToken(
@@ -34,7 +34,7 @@ data class OpenApiToken(
     @Deprecated("Token 域由 scope 决定,kind 已退役")
     val kind: String? = null,
     /**
-     * token 字符串(无连字符 UUID),唯一
+     * 用于查找的摘要，兼容迁移前的旧行
      */
     @Indexed(unique = true)
     val token: String,
@@ -54,4 +54,5 @@ data class OpenApiToken(
      * 最近使用时间,可空
      */
     val lastUsedAt: Instant? = null,
+    val encryptedSecret: String? = null,
 ) : Serializable

@@ -6,7 +6,6 @@ import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.OpenApiToken
 import com.lhs.share.hub.service.beta.BetaService
 import com.lhs.share.hub.service.inventory.InventoryApiException
-import com.lhs.share.repository.RedisCache
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import java.time.Instant
@@ -15,14 +14,13 @@ import java.util.UUID
 /**
  * 第三方 API Token 服务
  *
- * token 热数据存 Redis(不设过期,token 永不过期),持久化落库
- * HubBackend.open_api_token。Redis 丢失时回退 Mongo 校验,保证可用性。
+ * 连接凭证按摘要查询 Mongo，每次鉴权读取当前权限和归属。
  */
 @Service
 class OpenApiTokenService(
     private val tokenRepository: OpenApiTokenRepository,
     private val accountRepository: SubAccountRepository,
-    private val redisCache: RedisCache,
+    private val cipher: OpenApiTokenCipher,
     private val beta: BetaService,
 ) {
     /**
@@ -47,20 +45,13 @@ class OpenApiTokenService(
         val token = UUID.randomUUID().toString().replace("-", "")
         val now = Instant.now()
 
-        // 写 Redis(不设过期,token 永不过期)
-        redisCache.setCache(
-            redisKey(token),
-            TokenCacheData(userId = userId, accountId = accountId, scope = scopeCodes, createTime = now.toEpochMilli()),
-            0,
-        )
-
-        // 落库
         tokenRepository.save(
             OpenApiToken(
                 id = tokenId,
                 userId = userId,
                 accountId = accountId,
-                token = token,
+                token = OpenApiTokenCipher.digest(token),
+                encryptedSecret = cipher.encrypt(token, tokenId, userId),
                 scope = scopeCodes,
                 remark = remark,
                 createTime = now,
@@ -80,7 +71,7 @@ class OpenApiTokenService(
 
     /**
      * 校验 token 与权限,返回归属 userId 和 accountId。
-     * token 空 → 401;Redis 无则回退 Mongo,仍无 → 401;scope 不含任何必需权限 → 403。
+     * token 空 → 401;Mongo 无对应凭据 → 401;scope 不含任何必需权限 → 403。
      * 需要多个权限之一时用 [validateAnyAuthorization](如今日待办读取:operator:read 或 operator:daily-tasks:write)。
      */
     fun validateAuthorization(authorization: String?, permission: OpenApiPermission): OpenApiPrincipal =
@@ -107,17 +98,7 @@ class OpenApiTokenService(
         if (token.isNullOrBlank()) {
             throw InventoryApiException(HttpStatus.UNAUTHORIZED, "unauthorized", "API token is missing")
         }
-        val cached = redisCache.getCache(redisKey(token), TokenCacheData::class.java)
-        if (cached != null) {
-            if (requiredCodes.isNotEmpty() && requiredCodes.none { cached.scope.contains(it) }) {
-                throw InventoryApiException(HttpStatus.FORBIDDEN, "forbidden", "API token lacks the required scope")
-            }
-            beta.requireAccess(cached.userId)
-            return OpenApiPrincipal(cached.userId, cached.accountId)
-        }
-
-        // 回退 Mongo(防 Redis 丢失)
-        val entity = tokenRepository.findByToken(token)
+        val entity = findCredential(token)
             ?: throw InventoryApiException(HttpStatus.UNAUTHORIZED, "unauthorized", "API token is invalid")
         if (requiredCodes.isNotEmpty() && requiredCodes.none { entity.scope.contains(it) }) {
             throw InventoryApiException(HttpStatus.FORBIDDEN, "forbidden", "API token lacks the required scope")
@@ -130,9 +111,8 @@ class OpenApiTokenService(
      * 删除 token(校验归属,越权抛 403)
      */
     fun delete(userId: String, tokenId: String) {
-        val entity = tokenRepository.findByIdAndUserId(tokenId, userId)
+        tokenRepository.findByIdAndUserId(tokenId, userId)
             ?: throw ApiResultException(HttpStatus.NOT_FOUND.value(), "token 不存在")
-        redisCache.delete(redisKey(entity.token))
         tokenRepository.deleteById(tokenId)
     }
 
@@ -148,19 +128,12 @@ class OpenApiTokenService(
             ?: throw ApiResultException(HttpStatus.NOT_FOUND.value(), "子账号不存在")
         val updated = entity.copy(scope = permissions.map { it.code })
 
-        // 鉴权优先读无过期 Redis 缓存，因此必须先删除旧权限，再更新持久化权威来源并回填新权限。
-        redisCache.delete(redisKey(entity.token))
-        tokenRepository.save(updated)
-        redisCache.setCache(
-            redisKey(entity.token),
-            TokenCacheData(
-                userId = updated.userId,
-                accountId = updated.accountId,
-                scope = updated.scope,
-                createTime = updated.createTime.toEpochMilli(),
-            ),
-            0,
-        )
+        // A scope edit must never resurrect a revoked token or overwrite concurrently migrated ciphertext.
+        if (tokenRepository.updateOwnedScopes(tokenId, userId, updated.scope) == 0L &&
+            tokenRepository.findByIdAndUserId(tokenId, userId) == null
+        ) {
+            throw ApiResultException(HttpStatus.NOT_FOUND.value(), "token 不存在")
+        }
 
         return updated.toListItemDto(accountName)
     }
@@ -191,24 +164,30 @@ class OpenApiTokenService(
     /** Called only after the existing scope validation; cache is not provenance. */
     fun connectionIdForAuthorization(authorization: String?, principal: OpenApiPrincipal): String {
         val secret = authorization?.removePrefix(BEARER_PREFIX)?.trim()
-        val entity = secret?.let(tokenRepository::findByToken)
+        val entity = secret?.let(::findCredential)
         if (entity == null || entity.userId != principal.userId || entity.accountId != principal.accountId) {
             throw InventoryApiException(HttpStatus.UNAUTHORIZED, "unauthorized", "API token is invalid")
         }
         return checkNotNull(entity.id)
     }
 
-    fun secret(userId: String, tokenId: String): String = tokenRepository.findByIdAndUserId(tokenId, userId)?.token
-        ?: throw ApiResultException(HttpStatus.NOT_FOUND.value(), "token 不存在")
-
-    fun revokeByAccount(userId: String, accountId: String) {
-        tokenRepository.findAllByUserIdAndAccountId(userId, accountId).forEach {
-            redisCache.delete(redisKey(it.token))
-            tokenRepository.delete(it)
-        }
+    fun secret(userId: String, tokenId: String): String {
+        val entity = tokenRepository.findByIdAndUserId(tokenId, userId)
+            ?: throw ApiResultException(HttpStatus.NOT_FOUND.value(), "token 不存在")
+        if (!entity.token.startsWith("sha256:")) return entity.token
+        val secret = cipher.decrypt(checkNotNull(entity.encryptedSecret), tokenId, userId)
+        check(OpenApiTokenCipher.digest(secret) == entity.token) { "Connection code digest mismatch" }
+        return secret
     }
 
-    private fun redisKey(token: String): String = REDIS_KEY_PREFIX + token
+    fun revokeByAccount(userId: String, accountId: String) = tokenRepository.deleteAllByUserIdAndAccountId(userId, accountId)
+
+    private fun findCredential(secret: String): OpenApiToken? {
+        if (secret.startsWith("sha256:")) return null
+        val hash = OpenApiTokenCipher.digest(secret)
+        // Migrated tokens send only the digest to Mongo. Recheck both forms on a miss during backfill.
+        return tokenRepository.findByToken(hash) ?: tokenRepository.findFirstByTokenIn(listOf(hash, secret))
+    }
 
     private fun parseScopes(scopes: List<String>): List<OpenApiPermission> {
         if (scopes.isEmpty()) throw ApiResultException(HttpStatus.BAD_REQUEST.value(), "scopes 不能为空")
@@ -233,7 +212,6 @@ class OpenApiTokenService(
     )
 
     companion object {
-        private const val REDIS_KEY_PREFIX = "open-api-token:"
         private const val BEARER_PREFIX = "Bearer "
         private const val MAX_TOKENS_PER_ACCOUNT = 5
         private const val DELETED_ACCOUNT_NAME = "已删除账号"
@@ -257,16 +235,6 @@ data class OpenApiTokenListItemDto(
     val remark: String?,
     val scopes: List<String>,
     val createdAt: Instant,
-)
-
-/**
- * Redis 中缓存的 token 数据
- */
-data class TokenCacheData(
-    val userId: String,
-    val accountId: String,
-    val scope: List<Int>,
-    val createTime: Long,
 )
 
 data class OpenApiPrincipal(

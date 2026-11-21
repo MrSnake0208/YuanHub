@@ -107,8 +107,13 @@ if [ "$DEPLOY_PHASE" = release ]; then
     esac
   }
 
+  metadata_token="$(sed -n 's/^YUANHUB_RELEASE_METADATA_TOKEN=//p' "$BACKEND_ROOT/shared/backend.env" | tail -n 1)"
+  version_request() {
+    printf 'X-Release-Metadata: %s\n' "$metadata_token" | curl -fsS -H @- "$@"
+  }
+
   read_version() {
-    python3 -c 'import json,sys; data=json.load(sys.stdin).get("data") or {}; print((data.get("backend_version") or "") + " " + (data.get("backend_commit") or ""))'
+    python3 -c 'import json,sys; data=json.load(sys.stdin).get("data") or {}; print((data.get("backend_version") or "") + " " + ((data.get("git") or {}).get("commit_id") or data.get("backend_commit") or ""))'
   }
 
   version_payload_matches() {
@@ -116,18 +121,14 @@ if [ "$DEPLOY_PHASE" = release ]; then
     local reported_version reported_commit
     read -r reported_version reported_commit <<<"$(printf '%s' "$payload" | read_version 2>/dev/null || true)"
     [ "$reported_version" = "$RELEASE_VERSION" ] || return 1
-    [ -n "$reported_commit" ] || return 1
-    case "$RELEASE_COMMIT" in
-      "$reported_commit"*) return 0 ;;
-      *) return 1 ;;
-    esac
+    [ "$reported_commit" = "$RELEASE_COMMIT" ]
   }
 
   if [ "$active_slot" = "blue" ] || [ "$active_slot" = "green" ]; then
     active_port="$(slot_port "$active_slot")"
-    active_payload="$(curl -fsS --max-time 5 "http://127.0.0.1:$active_port/version" 2>/dev/null || true)"
+    active_payload="$(version_request --max-time 5 "http://127.0.0.1:$active_port/version" 2>/dev/null || true)"
     if [ -n "$active_payload" ] && version_payload_matches "$active_payload"; then
-      public_payload="$(curl -fsS --max-time 10 -H 'Cache-Control: no-cache' "${BACKEND_URL%/}/version?deploy=$RELEASE_COMMIT" 2>/dev/null || true)"
+      public_payload="$(version_request --max-time 10 -H 'Cache-Control: no-cache' "${BACKEND_URL%/}/version?deploy=$RELEASE_COMMIT" 2>/dev/null || true)"
       if [ -n "$public_payload" ] && version_payload_matches "$public_payload"; then
         echo "$RELEASE_VERSION is already active on $active_slot; nothing to deploy."
         exit 0
@@ -269,7 +270,7 @@ local_ready=0
 for attempt in $(seq 1 40); do
   if sudo -n "$SYSTEMCTL" is-active --quiet "$target_service"; then
     health="$(curl -fsS --max-time 4 "http://127.0.0.1:$target_management_port/actuator/health/readiness" 2>/dev/null || true)"
-    version="$(curl -fsS --max-time 4 "http://127.0.0.1:$target_port/version" 2>/dev/null || true)"
+    version="$(version_request --max-time 4 "http://127.0.0.1:$target_port/version" 2>/dev/null || true)"
     beta="$(curl -fsS --max-time 4 "http://127.0.0.1:$target_port/v1/beta/status" 2>/dev/null || true)"
     if printf '%s' "$health" | grep -q '"status":"UP"' &&
        [ -n "$version" ] && version_payload_matches "$version" &&
@@ -319,7 +320,7 @@ fi
 
 public_ready=0
 for attempt in $(seq 1 20); do
-  payload="$(curl -fsS --max-time 10 -H 'Cache-Control: no-cache' "${BACKEND_URL%/}/version?deploy=$RELEASE_COMMIT" 2>/dev/null || true)"
+  payload="$(version_request --max-time 10 -H 'Cache-Control: no-cache' "${BACKEND_URL%/}/version?deploy=$RELEASE_COMMIT" 2>/dev/null || true)"
   if [ -n "$payload" ] && version_payload_matches "$payload"; then
     public_ready=1
     echo "Public cutover verified on attempt $attempt."

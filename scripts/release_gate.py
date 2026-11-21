@@ -8,7 +8,7 @@ import re
 import subprocess
 import tempfile
 import uuid
-from urllib.request import urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = 'MrSnake0208/YuanHub'
@@ -26,17 +26,32 @@ def version(value):
     return value
 
 
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, *args):
+        return None
+
+
 def deployed(config, component):
     key = f'YUANHUB_{component.upper()}_URL'
     base = config.get(key, '').rstrip('/')
     if not base.startswith('https://'):
         raise ValueError(f'{key} must be configured with HTTPS')
     endpoint = '/deploy-meta.json' if component == 'frontend' else '/version'
-    with urlopen(base + endpoint + '?release-check=' + uuid.uuid4().hex, timeout=15) as response:
+    url = base + endpoint + '?release-check=' + uuid.uuid4().hex
+    token = os.environ.get('YUANHUB_RELEASE_METADATA_TOKEN') if component == 'backend' else None
+    if token:
+        request = Request(url, headers={'X-Release-Metadata': token})
+        response = build_opener(NoRedirect).open(request, timeout=15)
+    else:
+        response = urlopen(url, timeout=15)
+    with response:
         data = json.load(response)
     if component == 'backend':
         data = data['data']
-        result = dict(version=version(data['backend_version']), commit=data['git']['commit_id'])
+        commit = (data.get('git') or {}).get('commit_id')
+        if not commit:
+            raise ValueError('backend build metadata unavailable; check YUANHUB_RELEASE_METADATA_TOKEN')
+        result = dict(version=version(data['backend_version']), commit=commit)
     else:
         result = dict(version=version(data['version']), commit=data['commit'])
     if not re.fullmatch('[0-9a-f]{40}', result['commit']):

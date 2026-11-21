@@ -15,6 +15,8 @@ spring:
       port: 6379
 
 share:
+  openapi:
+    storage-key: ${YUANHUB_OPENAPI_STORAGE_KEY:}
   cors:
     # 多个来源用英文逗号分隔；生产环境不要保留 *。
     allowed-origin-patterns: "${SHARE_CORS_ALLOWED_ORIGIN_PATTERNS:*}"
@@ -23,7 +25,7 @@ share:
     public-base-url: ${SHARE_PUBLIC_BASE_URL:https://hub.maayuan.fun:16666}
   jwt:
     # JWT 签名密钥,生产环境务必更换
-    secret: please-change-me-to-a-long-random-secret
+    secret: ${SHARE_JWT_SECRET:}
   mongo:
     # Hub 库(HubBackend)连接串,与 MaaBackend 同一实例时留空即可(自动复用主连接)
     # 不同实例/不同账号时填写完整连接串
@@ -47,3 +49,9 @@ share:
   ledger:
     # 广陵账房:每用户方案数上限
     max-plans-per-user: 50
+
+springdoc:
+  swagger-ui:
+    enabled: true
+  api-docs:
+    enabled: true

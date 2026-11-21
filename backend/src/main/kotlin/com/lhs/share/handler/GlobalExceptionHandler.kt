@@ -3,6 +3,7 @@ package com.lhs.share.handler
 import com.lhs.share.controller.response.ApiResult
 import com.lhs.share.controller.response.ApiResult.Companion.fail
 import com.lhs.share.controller.response.ApiResultException
+import com.lhs.share.service.AuthRateLimit
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.ConstraintViolationException
@@ -28,6 +29,10 @@ private val log = KotlinLogging.logger { }
  */
 @RestControllerAdvice
 class GlobalExceptionHandler {
+    @ExceptionHandler(AuthRateLimit::class)
+    fun authRateLimit(e: AuthRateLimit): ResponseEntity<ApiResult<Nothing>> =
+        ResponseEntity.status(429).header("Retry-After", e.seconds.toString()).body(fail(429, e.message))
+
     /**
      * 业务异常
      */

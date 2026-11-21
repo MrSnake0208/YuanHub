@@ -1,3 +1,4 @@
+import base64
 import importlib.util
 import json
 import os
@@ -7,6 +8,7 @@ import subprocess
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 
 MODULE = Path(__file__).resolve().parents[1] / 'worktree_env.py'
 spec = importlib.util.spec_from_file_location('worktree_env', MODULE)
@@ -15,6 +17,23 @@ spec.loader.exec_module(env)
 
 
 class WorktreeEnvironmentTest(unittest.TestCase):
+    def setUp(self):
+        # Launcher subprocesses should only create credential files under the fixture directory.
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        config = patch.dict(os.environ, XDG_CONFIG_HOME=folder.name)
+        config.start()
+        self.addCleanup(config.stop)
+
+    def test_local_storage_key_is_stable_private_and_shared_across_concurrent_launches(self):
+        directory = Path(os.environ['XDG_CONFIG_HOME']) / 'yuanhub'
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            keys = set(pool.map(lambda _: env.local_storage_key(directory), range(16)))
+        self.assertEqual(1, len(keys))
+        self.assertEqual(32, len(base64.b64decode(keys.pop(), validate=True)))
+        self.assertEqual(0o600, (directory/'openapi-local.key').stat().st_mode & 0o777)
+
+
     def test_local_service_checks_fail_without_redis_and_never_start_services(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

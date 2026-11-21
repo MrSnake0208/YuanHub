@@ -31,6 +31,9 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 )
 @AutoConfigureMockMvc
 class LedgerPlanMvcValidationTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    lateinit var loginSessions: com.lhs.share.service.jwt.LoginSessions
+
     // Parameter validation must reach MVC without using any real rate-limit Redis.
     @org.springframework.test.context.bean.override.mockito.MockitoBean(answers = org.mockito.Answers.RETURNS_DEEP_STUBS)
     lateinit var redis: org.springframework.data.redis.core.StringRedisTemplate

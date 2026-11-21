@@ -6,14 +6,12 @@ import com.lhs.share.hub.repository.SubAccountRepository
 import com.lhs.share.hub.repository.entity.OpenApiToken
 import com.lhs.share.hub.repository.entity.SubAccount
 import com.lhs.share.hub.service.inventory.InventoryApiException
-import com.lhs.share.repository.RedisCache
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
 import io.mockk.slot
 import io.mockk.verify
-import io.mockk.verifyOrder
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -21,10 +19,12 @@ import org.junit.jupiter.api.Test
 import java.time.Instant
 
 class OpenApiTokenServiceTest {
-    private val tokenRepository = mockk<OpenApiTokenRepository>()
+    private val tokenRepository = mockk<OpenApiTokenRepository> { every { findByToken(any()) } returns null }
     private val accountRepository = mockk<SubAccountRepository>()
-    private val redisCache = mockk<RedisCache>(relaxed = true)
-    private val service = OpenApiTokenService(tokenRepository, accountRepository, redisCache, mockk(relaxed = true))
+    private val cipher = OpenApiTokenCipher(java.util.Base64.getEncoder().encodeToString(ByteArray(32) { it.toByte() }))
+    private val service = OpenApiTokenService(tokenRepository, accountRepository, cipher, mockk(relaxed = true))
+
+    private fun lookup(secret: String) = listOf(OpenApiTokenCipher.digest(secret), secret)
 
     private fun entity(
         id: String = "token-id",
@@ -46,7 +46,7 @@ class OpenApiTokenServiceTest {
     @Test
     fun `connection provenance comes from owned persistent token and never from cached principal alone`() {
         val secret = java.util.UUID.randomUUID().toString()
-        every { tokenRepository.findByToken(secret) } returns entity(token = secret)
+        every { tokenRepository.findFirstByTokenIn(lookup(secret)) } returns entity(token = secret)
         assertEquals("token-id", service.connectionIdForAuthorization("Bearer $secret", OpenApiPrincipal("u1", "main")))
         assertThrows(InventoryApiException::class.java) {
             service.connectionIdForAuthorization("Bearer $secret", OpenApiPrincipal("u2", "main"))
@@ -54,7 +54,7 @@ class OpenApiTokenServiceTest {
         assertThrows(InventoryApiException::class.java) {
             service.connectionIdForAuthorization("Bearer $secret", OpenApiPrincipal("u1", "alt"))
         }
-        every { tokenRepository.findByToken(secret) } returns null
+        every { tokenRepository.findFirstByTokenIn(lookup(secret)) } returns null
         assertThrows(InventoryApiException::class.java) {
             service.connectionIdForAuthorization("Bearer $secret", OpenApiPrincipal("u1", "main"))
         }
@@ -81,7 +81,16 @@ class OpenApiTokenServiceTest {
         assertEquals("大号", response.accountName)
         assertEquals(response.tokenId, saved.captured.id)
         assertEquals(null, saved.captured.kind)
-        verify { redisCache.setCache("open-api-token:${response.token}", any<TokenCacheData>(), 0) }
+        assertEquals(OpenApiTokenCipher.digest(response.token), saved.captured.token)
+        every { tokenRepository.findByIdAndUserId(response.tokenId, "u1") } returns saved.captured
+        assertEquals(response.token, service.secret("u1", response.tokenId))
+        every { tokenRepository.findByToken(saved.captured.token) } returns saved.captured
+        assertEquals("u1", service.authenticateAuthorization("Bearer ${response.token}").userId)
+        verify(exactly = 0) { tokenRepository.findFirstByTokenIn(any()) }
+        assertThrows(InventoryApiException::class.java) { service.authenticateAuthorization("Bearer " + saved.captured.token) }
+        assertThrows(javax.crypto.AEADBadTagException::class.java) {
+            cipher.decrypt(checkNotNull(saved.captured.encryptedSecret), response.tokenId, "another-owner")
+        }
     }
 
     @Test
@@ -152,8 +161,7 @@ class OpenApiTokenServiceTest {
 
     @Test
     fun `valid bearer token with required scope returns owner`() {
-        every { redisCache.getCache("open-api-token:tok123", TokenCacheData::class.java) } returns
-            TokenCacheData("u1", "main", listOf(10002), 0)
+        every { tokenRepository.findFirstByTokenIn(lookup("tok123")) } returns entity(scope = listOf(10002))
 
         assertEquals(OpenApiPrincipal("u1", "main"), service.validateAuthorization("Bearer tok123", OpenApiPermission.INVENTORY_WRITE))
     }
@@ -168,8 +176,7 @@ class OpenApiTokenServiceTest {
             assertEquals("unauthorized", error.code)
         }
 
-        every { redisCache.getCache("open-api-token:invalid", TokenCacheData::class.java) } returns null
-        every { tokenRepository.findByToken("invalid") } returns null
+        every { tokenRepository.findFirstByTokenIn(lookup("invalid")) } returns null
         assertEquals(
             401,
             assertThrows(InventoryApiException::class.java) {
@@ -177,8 +184,7 @@ class OpenApiTokenServiceTest {
             }.status.value(),
         )
 
-        every { redisCache.getCache("open-api-token:read-only", TokenCacheData::class.java) } returns
-            TokenCacheData("u1", "main", listOf(10001), 0)
+        every { tokenRepository.findFirstByTokenIn(lookup("read-only")) } returns entity(scope = listOf(10001))
         val forbidden = assertThrows(InventoryApiException::class.java) {
             service.validateAuthorization("Bearer read-only", OpenApiPermission.INVENTORY_WRITE)
         }
@@ -188,8 +194,8 @@ class OpenApiTokenServiceTest {
 
     @Test
     fun `daily tasks write scope cannot reach operator or inventory writes`() {
-        every { redisCache.getCache("open-api-token:daily", TokenCacheData::class.java) } returns
-            TokenCacheData("u1", "main", listOf(OpenApiPermission.OPERATOR_DAILY_TASKS_WRITE.code), 0)
+        every { tokenRepository.findFirstByTokenIn(lookup("daily")) } returns
+            entity(scope = listOf(OpenApiPermission.OPERATOR_DAILY_TASKS_WRITE.code))
 
         // 只有它自己的最小权限可通过
         assertEquals(
@@ -217,21 +223,19 @@ class OpenApiTokenServiceTest {
     }
 
     @Test
-    fun `Mongo fallback validates token`() {
-        every { redisCache.getCache("open-api-token:tok123", TokenCacheData::class.java) } returns null
-        every { tokenRepository.findByToken("tok123") } returns entity(userId = "u2", scope = listOf(10003))
+    fun `legacy Mongo row validates token`() {
+        every { tokenRepository.findFirstByTokenIn(lookup("tok123")) } returns entity(userId = "u2", scope = listOf(10003))
 
         assertEquals(OpenApiPrincipal("u2", "main"), service.validateAuthorization("Bearer tok123", OpenApiPermission.INVENTORY_EXPORT))
     }
 
     @Test
-    fun `revocation uses token id and clears cached secret`() {
+    fun `revocation uses token id and removes the persistent credential`() {
         every { tokenRepository.findByIdAndUserId("token-id", "u1") } returns entity()
         every { tokenRepository.deleteById("token-id") } just runs
 
         service.delete("u1", "token-id")
 
-        verify { redisCache.delete("open-api-token:tok123") }
         verify { tokenRepository.deleteById("token-id") }
     }
 
@@ -263,10 +267,7 @@ class OpenApiTokenServiceTest {
         every { tokenRepository.findByIdAndUserId("token-id", "u1") } returns original
         every { accountRepository.findByUserIdAndAccountId("u1", "main") } returns
             SubAccount(id = "a1", userId = "u1", accountId = "main", name = "大号")
-        val saved = slot<OpenApiToken>()
-        every { tokenRepository.save(capture(saved)) } answers { saved.captured }
-        val cached = slot<TokenCacheData>()
-        every { redisCache.setCache("open-api-token:tok123", capture(cached), 0) } just runs
+        every { tokenRepository.updateOwnedScopes("token-id", "u1", listOf(20004, 10002, 10001)) } returns 1L
 
         val response = service.updateScopes(
             "u1",
@@ -274,8 +275,7 @@ class OpenApiTokenServiceTest {
             listOf("operator:scan:write", "inventory:write", "inventory:read"),
         )
 
-        assertEquals(original.copy(scope = listOf(20004, 10002, 10001)), saved.captured)
-        assertEquals("tok123", saved.captured.token)
+        verify { tokenRepository.updateOwnedScopes("token-id", "u1", listOf(20004, 10002, 10001)) }
         assertEquals("token-id", response.tokenId)
         assertEquals("main", response.accountId)
         assertEquals("大号", response.accountName)
@@ -285,65 +285,21 @@ class OpenApiTokenServiceTest {
             response.scopes,
         )
         assertEquals(Instant.parse("2023-11-14T22:13:20Z"), response.createdAt)
+    }
+
+    @Test
+    fun `revocation during a scope update cannot recreate the token`() {
+        every { tokenRepository.findByIdAndUserId("token-id", "u1") } returnsMany listOf(entity(), null)
+        every { accountRepository.findByUserIdAndAccountId("u1", "main") } returns
+            SubAccount(id = "a1", userId = "u1", accountId = "main", name = "大号")
+        every { tokenRepository.updateOwnedScopes("token-id", "u1", listOf(10002)) } returns 0L
         assertEquals(
-            TokenCacheData(
-                userId = "u1",
-                accountId = "main",
-                scope = listOf(20004, 10002, 10001),
-                createTime = original.createTime.toEpochMilli(),
-            ),
-            cached.captured,
+            404,
+            assertThrows(ApiResultException::class.java) {
+                service.updateScopes("u1", "token-id", listOf("inventory:write"))
+            }.statusCode,
         )
-        verifyOrder {
-            redisCache.delete("open-api-token:tok123")
-            tokenRepository.save(any())
-            redisCache.setCache("open-api-token:tok123", any<TokenCacheData>(), 0)
-        }
-    }
-
-    @Test
-    fun `scope update removes permission from Mongo and Redis`() {
-        val original = entity(scope = listOf(20004, 10002, 10001))
-        every { tokenRepository.findByIdAndUserId("token-id", "u1") } returns original
-        every { accountRepository.findByUserIdAndAccountId("u1", "main") } returns
-            SubAccount(id = "a1", userId = "u1", accountId = "main", name = "大号")
-        val saved = slot<OpenApiToken>()
-        every { tokenRepository.save(capture(saved)) } answers { saved.captured }
-        val cached = slot<TokenCacheData>()
-        every { redisCache.setCache("open-api-token:tok123", capture(cached), 0) } just runs
-
-        val response = service.updateScopes(
-            "u1",
-            "token-id",
-            listOf("operator:scan:write", "inventory:write"),
-        )
-
-        assertEquals(listOf(20004, 10002), saved.captured.scope)
-        assertEquals(listOf(20004, 10002), cached.captured.scope)
-        assertEquals(listOf("operator:scan:write", "inventory:write"), response.scopes)
-        assertFalse(saved.captured.scope.contains(10001))
-        assertFalse(cached.captured.scope.contains(10001))
-    }
-
-    @Test
-    fun `scope update cache write failure cannot restore the old cached permissions`() {
-        val original = entity(scope = listOf(10001))
-        every { tokenRepository.findByIdAndUserId("token-id", "u1") } returns original
-        every { accountRepository.findByUserIdAndAccountId("u1", "main") } returns
-            SubAccount(id = "a1", userId = "u1", accountId = "main", name = "大号")
-        every { tokenRepository.save(any()) } answers { firstArg() }
-        every { redisCache.setCache("open-api-token:tok123", any<TokenCacheData>(), 0) } throws
-            IllegalStateException("Redis unavailable")
-
-        assertThrows(IllegalStateException::class.java) {
-            service.updateScopes("u1", "token-id", listOf("inventory:write"))
-        }
-
-        verifyOrder {
-            redisCache.delete("open-api-token:tok123")
-            tokenRepository.save(original.copy(scope = listOf(10002)))
-            redisCache.setCache("open-api-token:tok123", any<TokenCacheData>(), 0)
-        }
+        verify(exactly = 0) { tokenRepository.save(any()) }
     }
 
     @Test
@@ -356,8 +312,7 @@ class OpenApiTokenServiceTest {
 
         assertEquals(404, error.statusCode)
         verify(exactly = 0) { tokenRepository.save(any()) }
-        verify(exactly = 0) { redisCache.delete(any()) }
-        verify(exactly = 0) { redisCache.setCache(any(), any<Any>(), any()) }
+        verify(exactly = 0) { tokenRepository.updateOwnedScopes(any(), any(), any()) }
     }
 
     @Test
@@ -403,8 +358,7 @@ class OpenApiTokenServiceTest {
         every { tokenRepository.findByIdAndUserId("token-id", "u1") } returns entity()
         every { accountRepository.findByUserIdAndAccountId("u1", "main") } returns
             SubAccount(id = "a1", userId = "u1", accountId = "main", name = "大号")
-        val saved = slot<OpenApiToken>()
-        every { tokenRepository.save(capture(saved)) } answers { saved.captured }
+        every { tokenRepository.updateOwnedScopes("token-id", "u1", listOf(10002, 20004)) } returns 1L
 
         val response = service.updateScopes(
             "u1",
@@ -412,7 +366,7 @@ class OpenApiTokenServiceTest {
             listOf("inventory:write", "operator:scan:write"),
         )
 
-        assertEquals(listOf(10002, 20004), saved.captured.scope)
+        verify { tokenRepository.updateOwnedScopes("token-id", "u1", listOf(10002, 20004)) }
         assertEquals(listOf("inventory:write", "operator:scan:write"), response.scopes)
     }
 
@@ -428,24 +382,14 @@ class OpenApiTokenServiceTest {
         assertEquals(404, error.statusCode)
         assertEquals("子账号不存在", error.message)
         verify(exactly = 0) { tokenRepository.save(any()) }
-        verify(exactly = 0) { redisCache.delete(any()) }
-        verify(exactly = 0) { redisCache.setCache(any(), any<Any>(), any()) }
+        verify(exactly = 0) { tokenRepository.updateOwnedScopes(any(), any(), any()) }
     }
 
     @Test
     fun `account revocation clears every bound token regardless of legacy kind`() {
-        every { tokenRepository.findAllByUserIdAndAccountId("u1", "main") } returns
-            listOf(
-                entity(id = "one", token = "tok1").copy(kind = "OPERATOR"),
-                entity(id = "two", token = "tok2").copy(kind = "INVENTORY"),
-            )
-        every { tokenRepository.delete(any()) } just runs
-
+        every { tokenRepository.deleteAllByUserIdAndAccountId("u1", "main") } just runs
         service.revokeByAccount("u1", "main")
-
-        verify { redisCache.delete("open-api-token:tok1") }
-        verify { redisCache.delete("open-api-token:tok2") }
-        verify(exactly = 2) { tokenRepository.delete(any()) }
+        verify { tokenRepository.deleteAllByUserIdAndAccountId("u1", "main") }
     }
 
     @Test
@@ -487,8 +431,8 @@ class OpenApiTokenServiceTest {
     @Test
     fun `any-of validation accepts either scope and rejects when neither is present`() {
         // 只有今日历练完成记录权限：读取今日待办（operator:read 或 operator:daily-tasks:write）应当放行
-        every { redisCache.getCache("open-api-token:daily-only", TokenCacheData::class.java) } returns
-            TokenCacheData("u1", "main", listOf(OpenApiPermission.OPERATOR_DAILY_TASKS_WRITE.code), 0)
+        every { tokenRepository.findFirstByTokenIn(lookup("daily-only")) } returns
+            entity(scope = listOf(OpenApiPermission.OPERATOR_DAILY_TASKS_WRITE.code))
         assertEquals(
             OpenApiPrincipal("u1", "main"),
             service.validateAnyAuthorization(
@@ -506,8 +450,8 @@ class OpenApiTokenServiceTest {
         )
 
         // 只有密探读取权限：同样放行
-        every { redisCache.getCache("open-api-token:read-only", TokenCacheData::class.java) } returns
-            TokenCacheData("u1", "main", listOf(OpenApiPermission.OPERATOR_READ.code), 0)
+        every { tokenRepository.findFirstByTokenIn(lookup("read-only")) } returns
+            entity(scope = listOf(OpenApiPermission.OPERATOR_READ.code))
         assertEquals(
             OpenApiPrincipal("u1", "main"),
             service.validateAnyAuthorization(
@@ -518,8 +462,8 @@ class OpenApiTokenServiceTest {
         )
 
         // 两个都没有（例如只有活动日历）：403
-        every { redisCache.getCache("open-api-token:calendar-only", TokenCacheData::class.java) } returns
-            TokenCacheData("u1", "main", listOf(OpenApiPermission.CALENDAR_READ.code), 0)
+        every { tokenRepository.findFirstByTokenIn(lookup("calendar-only")) } returns
+            entity(scope = listOf(OpenApiPermission.CALENDAR_READ.code))
         val forbidden = assertThrows(InventoryApiException::class.java) {
             service.validateAnyAuthorization(
                 "Bearer calendar-only",

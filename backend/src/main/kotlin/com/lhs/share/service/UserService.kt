@@ -3,26 +3,28 @@ package com.lhs.share.service
 import com.lhs.share.controller.request.user.LoginDTO
 import com.lhs.share.controller.request.user.PasswordResetDTO
 import com.lhs.share.controller.request.user.RegisterDTO
-import com.lhs.share.controller.request.user.SendRegistrationTokenDTO
 import com.lhs.share.controller.request.user.UserInfoUpdateDTO
 import com.lhs.share.controller.response.ApiResultException
 import com.lhs.share.controller.response.user.MaaLoginRsp
 import com.lhs.share.controller.response.user.MaaUserInfo
 import com.lhs.share.repository.UserRepository
 import com.lhs.share.repository.entity.MaaUser
+import com.lhs.share.service.jwt.JwtAuthToken
 import com.lhs.share.service.jwt.JwtExpiredException
 import com.lhs.share.service.jwt.JwtInvalidException
 import com.lhs.share.service.jwt.JwtService
-import io.github.oshai.kotlinlogging.KotlinLogging
+import com.lhs.share.service.jwt.LoginSessions
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpStatus
+import org.springframework.scheduling.annotation.Async
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.UUID
 
 /**
  * 用户服务:注册/登录/改密/重置/改名/刷新 token + 只读查询
@@ -36,25 +38,28 @@ class UserService(
     private val passwordEncoder: PasswordEncoder,
     private val userDetailService: UserDetailServiceImpl,
     private val jwtService: JwtService,
+    private val sessions: LoginSessions,
 ) {
-    private val log = KotlinLogging.logger { }
+    // Unknown mailboxes take the same password-verification path as known ones.
+    private val missingUserPassword = passwordEncoder.encode(UUID.randomUUID().toString())
 
     /**
      * 登录,成功返回携带 access/refresh token 的响应
      */
     fun login(loginDTO: LoginDTO): MaaLoginRsp {
+        val startedAt = Instant.now()
         val user = userRepository.findByEmail(loginDTO.email)
-        if (user == null || !passwordEncoder.matches(loginDTO.password, user.password)) {
+        if (!passwordEncoder.matches(loginDTO.password, user?.password ?: missingUserPassword) || user == null) {
             throw ApiResultException(HttpStatus.UNAUTHORIZED.value(), "用户不存在或者密码错误")
         }
         // 未激活的用户
-        if (user.status == 0) {
+        if (user.status <= 0) {
             throw ApiResultException(HttpStatus.UNAUTHORIZED.value(), "用户未启用")
         }
 
         val authorities = userDetailService.collectAuthoritiesFor(user)
-        val authToken = jwtService.issueAuthToken(user.userId!!, null, authorities)
-        val refreshToken = jwtService.issueRefreshToken(user.userId, null)
+        val refreshToken = sessions.start(user.userId!!, startedAt)
+        val authToken = jwtService.issueAuthToken(user.userId, refreshToken.jwtId, authorities, refreshToken.issuedAt)
 
         return MaaLoginRsp(
             authToken.value,
@@ -84,13 +89,9 @@ class UserService(
             check(ChronoUnit.MINUTES.between(maaUser.pwdUpdateTime, Instant.now()) >= 10L) { "密码修改过于频繁" }
         }
         // 修改密码的逻辑,应当使用与 authentication provider 一致的编码器
-        maaUser.password = passwordEncoder.encode(rawPassword)
-        // 更新密码时,如果用户未启用则自动启用
-        if (maaUser.status == 0) {
-            maaUser.status = 1
+        if (userRepository.changePassword(userId, maaUser.password, passwordEncoder.encode(rawPassword), Instant.now()) != 1L) {
+            throw ApiResultException(409, "密码已变更，请重试")
         }
-        maaUser.pwdUpdateTime = Instant.now()
-        userRepository.save(maaUser)
     }
 
     /**
@@ -103,7 +104,7 @@ class UserService(
 
         // 邮箱验证码校验
         val token = registerDTO.registrationToken?.trim().orEmpty()
-        emailService.verifyVCode(registerDTO.email, token)
+        emailService.verifyVCode(registerDTO.email, EmailCodePurpose.REGISTER, token)
 
         val encoded = passwordEncoder.encode(registerDTO.password)
 
@@ -133,8 +134,7 @@ class UserService(
             return
         }
         check(!userRepository.existsByUserName(newName)) { "用户名已存在,请重新取个名字吧" }
-        maaUser.userName = newName
-        userRepository.save(maaUser)
+        userRepository.changeUserName(userId, newName)
     }
 
     /**
@@ -153,14 +153,9 @@ class UserService(
                 throw ApiResultException(HttpStatus.UNAUTHORIZED.value(), "invalid token")
             }
 
-            // 刚签发不久的 refreshToken 重新使用
-            val refreshToken = if (ChronoUnit.MINUTES.between(old.issuedAt, Instant.now()) < 5) {
-                old
-            } else {
-                jwtService.issueRefreshToken(userId, null)
-            }
+            val refreshToken = sessions.refresh(old, user.pwdUpdateTime)
             val authorities = userDetailService.collectAuthoritiesFor(user)
-            val authToken = jwtService.issueAuthToken(userId, null, authorities)
+            val authToken = jwtService.issueAuthToken(userId, refreshToken.jwtId, authorities, refreshToken.issuedAt)
 
             return MaaLoginRsp(
                 authToken.value,
@@ -180,36 +175,31 @@ class UserService(
         }
     }
 
+    fun logout(token: String, access: JwtAuthToken?) {
+        val refresh = try {
+            jwtService.verifyAndParseRefreshToken(token)
+        } catch (_: JwtExpiredException) {
+            return
+        } catch (_: JwtInvalidException) {
+            return
+        }
+        sessions.logout(refresh, access)
+    }
+
     /**
      * 通过邮箱激活码更新密码
      */
     fun modifyPasswordByActiveCode(passwordResetDTO: PasswordResetDTO) {
-        emailService.verifyVCode(passwordResetDTO.email, passwordResetDTO.activeCode)
+        emailService.verifyVCode(passwordResetDTO.email, EmailCodePurpose.RESET_PASSWORD, passwordResetDTO.activeCode)
         val maaUser = userRepository.findByEmail(passwordResetDTO.email)
-        modifyPassword(maaUser!!.userId!!, passwordResetDTO.password, verifyOriginPassword = false)
+            ?: throw ApiResultException(HttpStatus.UNAUTHORIZED.value(), "验证码错误")
+        modifyPassword(maaUser.userId!!, passwordResetDTO.password, verifyOriginPassword = false)
     }
 
-    /**
-     * 根据邮箱校验用户是否存在
-     */
-    fun checkUserExistByEmail(email: String) {
-        if (userRepository.findByEmail(email) == null) {
-            throw ApiResultException(HttpStatus.NOT_FOUND.value(), "找不到用户")
-        }
-    }
-
-    /**
-     * 注册时发送验证码
-     */
-    fun sendRegistrationToken(regDTO: SendRegistrationTokenDTO) {
-        // 判断用户是否存在
-        val maaUser = userRepository.findByEmail(regDTO.email)
-        if (maaUser != null) {
-            log.info { "send registration token: user exists for email: ${regDTO.email}" }
-            throw ApiResultException(HttpStatus.BAD_REQUEST.value(), "用户已存在")
-        }
-        // 发送验证码(邮箱验证码模式)
-        emailService.sendVCode(regDTO.email)
+    @Async
+    fun deliverCode(email: String, purpose: EmailCodePurpose) {
+        val exists = userRepository.findByEmail(email) != null
+        if ((purpose == EmailCodePurpose.REGISTER) != exists) emailService.sendVCode(email, purpose)
     }
 
     // ===== 只读查询(与原项目语义一致) =====
@@ -225,7 +215,11 @@ class UserService(
     fun findFeedbackAccessUserByEmail(email: String): MaaUser? = userRepository.findByEmailIgnoreCase(email)
         ?.takeIf { it.status > 0 }
 
-    fun search(userName: String, pageable: Pageable): Page<MaaUserInfo> = userRepository.searchUsers(userName, pageable)
+    fun search(userName: String, pageable: Pageable): Page<MaaUserInfo> {
+        val term = userName.trim()
+        if (term.length !in 2..48) throw ApiResultException(400, "请输入 2 至 48 个字符的用户名")
+        return userRepository.searchUsers(Regex.escape(term), pageable)
+    }
 
     fun searchFeedbackAccessUsers(query: String, pageable: Pageable): Page<MaaUser> =
         userRepository.searchFeedbackAccessUsers(query, pageable)

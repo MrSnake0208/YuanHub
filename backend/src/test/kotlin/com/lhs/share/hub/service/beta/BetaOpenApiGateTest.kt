@@ -8,8 +8,6 @@ import com.lhs.share.hub.service.inventory.InventoryApiException
 import com.lhs.share.hub.service.recruitment.RecruitmentAccessService
 import com.lhs.share.openapi.OpenApiPermission
 import com.lhs.share.openapi.OpenApiTokenService
-import com.lhs.share.openapi.TokenCacheData
-import com.lhs.share.repository.RedisCache
 import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.just
@@ -24,31 +22,15 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.time.Instant
 
 class BetaOpenApiGateTest {
-    private val tokens = mockk<OpenApiTokenRepository>()
+    private val tokens = mockk<OpenApiTokenRepository> { every { findByToken(any()) } returns null }
     private val accounts = mockk<SubAccountRepository>()
-    private val cache = mockk<RedisCache>(relaxed = true)
     private val beta = mockk<BetaService>()
-    private val service = OpenApiTokenService(tokens, accounts, cache, beta)
+    private val service = OpenApiTokenService(tokens, accounts, mockk(), beta)
     private fun deny() = BetaApiException(HttpStatus.FORBIDDEN, "beta_access_required", "join beta first")
 
     @Test
-    fun `cached OpenAPI token cannot bypass beta even if issued before the feature existed`() {
-        every { cache.getCache("open-api-token:valid", TokenCacheData::class.java) } returns TokenCacheData("u", "a", listOf(10001), 0)
-        every { beta.requireAccess("u") } throws deny()
-        assertEquals(
-            "beta_access_required",
-            assertThrows(BetaApiException::class.java) {
-                service.validateAuthorization("Bearer valid", OpenApiPermission.INVENTORY_READ)
-            }.code,
-        )
-        verify(exactly = 1) { beta.requireAccess("u") }
-        verify(exactly = 0) { tokens.findByToken(any()) }
-    }
-
-    @Test
-    fun `Mongo fallback and no-scope account lookup apply exactly the same gate`() {
-        every { cache.getCache("open-api-token:valid", TokenCacheData::class.java) } returns null
-        every { tokens.findByToken("valid") } returns OpenApiToken(
+    fun `Persistent token and no-scope account lookup apply exactly the same gate`() {
+        every { tokens.findFirstByTokenIn(any()) } returns OpenApiToken(
             id = "token",
             userId = "u",
             accountId = "a",
@@ -67,7 +49,8 @@ class BetaOpenApiGateTest {
     @Test
     fun `beta does not replace token authentication or required scopes`() {
         assertThrows(InventoryApiException::class.java) { service.authenticateAuthorization(null) }
-        every { cache.getCache("open-api-token:valid", TokenCacheData::class.java) } returns TokenCacheData("u", "a", emptyList(), 0)
+        every { tokens.findFirstByTokenIn(any()) } returns
+            OpenApiToken(userId = "u", accountId = "a", token = "valid", scope = emptyList(), remark = null)
         assertThrows(InventoryApiException::class.java) { service.validateAuthorization("Bearer valid", OpenApiPermission.INVENTORY_READ) }
         verify(exactly = 0) { beta.requireAccess(any()) }
     }

@@ -120,6 +120,7 @@ jobs:
       - name: Require concentrated release evidence
         working-directory: .
         env:
+          YUANHUB_RELEASE_METADATA_TOKEN: ${{ secrets.YUANHUB_RELEASE_METADATA_TOKEN }}
           GH_TOKEN: ${{ github.token }}
           API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}
           DEPLOYMENT_URL: ${{ vars.YUANHUB_FRONTEND_URL }}

@@ -58,6 +58,9 @@ import java.util.UUID
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class OpenApiSchemaHarnessTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    lateinit var loginSessions: com.lhs.share.service.jwt.LoginSessions
+
     companion object {
         private val maaDatabase = TestMongo.database("api_maa")
         private val hubDatabase = TestMongo.database("api_hub")

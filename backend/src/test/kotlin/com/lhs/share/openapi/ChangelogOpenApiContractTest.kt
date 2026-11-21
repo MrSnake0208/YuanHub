@@ -39,6 +39,9 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 )
 @TestPropertySource(properties = ["share.info.public-base-url=https://changelog.example.test"])
 class ChangelogOpenApiContractTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    lateinit var loginSessions: com.lhs.share.service.jwt.LoginSessions
+
     @MockitoBean
     lateinit var authorization: com.lhs.share.hub.service.admin.AdminAuthorizationService
 

@@ -6,9 +6,10 @@ import com.lhs.share.hub.repository.AdminRoleBindingRepository
 import com.lhs.share.hub.repository.entity.AdminRole
 import com.lhs.share.hub.repository.entity.AdminRoleBinding
 import com.lhs.share.hub.service.admin.AdminAuthorizationService
-import com.lhs.share.repository.RedisCache
 import com.lhs.share.repository.UserRepository
 import com.lhs.share.repository.entity.MaaUser
+import com.lhs.share.service.EmailCodePurpose
+import com.lhs.share.service.EmailCodes
 import com.lhs.share.service.UserService
 import com.mongodb.client.FindIterable
 import com.mongodb.client.MongoCollection
@@ -35,7 +36,7 @@ class AgentTestBootstrapTest {
 
     private val users = mockk<UserService>()
     private val repository = mockk<UserRepository>()
-    private val codes = mockk<RedisCache>(relaxed = true)
+    private val codes = mockk<EmailCodes>(relaxed = true)
     private val redis = mockk<StringRedisTemplate>()
     private val mongo = mockk<MongoTemplate>()
     private val hub = mockk<MongoTemplate>()
@@ -81,7 +82,7 @@ class AgentTestBootstrapTest {
         repeat(2) { runner.run(DefaultApplicationArguments()) }
         verify(exactly = 2) { users.register(any()) }
         verify(exactly = 4) { users.login(any()) }
-        verify(exactly = 2) { codes.setCache(any(), any<String>(), 60L) }
+        verify(exactly = 2) { codes.issue(any(), EmailCodePurpose.REGISTER, any(), 60L) }
         verify(exactly = 1) { roles.save(any()) }
         assertEquals(setOf(AdminRole.ACTIVITY_CALENDAR_EDITOR), bindings.values.single().roles)
     }
@@ -91,7 +92,7 @@ class AgentTestBootstrapTest {
         val runner = runner(marker = false)
         assertThrows(IllegalStateException::class.java) { runner.run(DefaultApplicationArguments()) }
         verify(exactly = 0) { users.register(any()) }
-        verify(exactly = 0) { codes.setCache(any(), any<String>(), any<Long>()) }
+        verify(exactly = 0) { codes.issue(any(), any(), any(), any()) }
         verify(exactly = 0) { roles.save(any()) }
     }
 
@@ -100,7 +101,7 @@ class AgentTestBootstrapTest {
         val runner = runner(redisMarker = false)
         assertThrows(IllegalStateException::class.java) { runner.run(DefaultApplicationArguments()) }
         verify(exactly = 0) { users.register(any()) }
-        verify(exactly = 0) { codes.setCache(any(), any<String>(), any<Long>()) }
+        verify(exactly = 0) { codes.issue(any(), any(), any(), any()) }
         verify(exactly = 0) { roles.save(any()) }
     }
 

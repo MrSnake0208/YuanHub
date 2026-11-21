@@ -56,6 +56,9 @@ import java.time.Instant
     LedgerCatalogService::class,
 )
 class LedgerCatalogSecurityTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    lateinit var loginSessions: com.lhs.share.service.jwt.LoginSessions
+
     @Autowired lateinit var mvc: MockMvc
 
     @MockitoBean lateinit var repository: LedgerCatalogRepository

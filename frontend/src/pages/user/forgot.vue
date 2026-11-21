@@ -121,7 +121,7 @@ async function onSend() {
   try {
     await sendResetVCode({ email: form.email })
     sentEmail.value = form.email
-    codeMsg.value = '验证码已发送，请注意查收'
+    codeMsg.value = '若邮箱已注册，你会收到验证码，请查看收件箱。'
     startCountdown()
     step.value = 2
   } catch (e) {

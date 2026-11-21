@@ -39,7 +39,7 @@ fi
 
 # Ignore inherited live-service credentials; application ports belong to this tree; databases are shared local services.
 for name in $(compgen -e); do
-    case "$name" in SPRING_*|SHARE_*|DEBUG_*|YUANHUB_BETA_*|JAVA_TOOL_OPTIONS|JDK_JAVA_OPTIONS) unset "$name" ;; esac
+    case "$name" in SPRING_*|SHARE_*|DEBUG_*|YUANHUB_BETA_*|YUANHUB_OPENAPI_STORAGE_KEY|YUANHUB_RELEASE_METADATA_TOKEN|JAVA_TOOL_OPTIONS|JDK_JAVA_OPTIONS) unset "$name" ;; esac
 done
 worktree_exports="$(cd "$ROOT_DIR" && python3 scripts/worktree_env.py "$DATA_MODE")"
 eval "$worktree_exports"

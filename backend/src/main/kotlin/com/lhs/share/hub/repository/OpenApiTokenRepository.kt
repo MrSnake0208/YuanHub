@@ -2,6 +2,8 @@ package com.lhs.share.hub.repository
 
 import com.lhs.share.hub.repository.entity.OpenApiToken
 import org.springframework.data.mongodb.repository.MongoRepository
+import org.springframework.data.mongodb.repository.Query
+import org.springframework.data.mongodb.repository.Update
 
 /**
  * 第三方 API Token 仓储(HubBackend.open_api_token)
@@ -16,12 +18,16 @@ interface OpenApiTokenRepository : MongoRepository<OpenApiToken, String> {
      */
     fun findByUserIdOrderByCreateTimeDesc(userId: String): List<OpenApiToken>
 
-    fun findAllByUserIdAndAccountId(userId: String, accountId: String): List<OpenApiToken>
-
     /**
      * 按 token 查询,不存在时返回 null
      */
     fun findByToken(token: String): OpenApiToken?
+
+    fun findFirstByTokenIn(values: List<String>): OpenApiToken?
+
+    @Query("{ '_id': ?0, 'userId': ?1 }")
+    @Update("{ '\$set': { 'scope': ?2 } }")
+    fun updateOwnedScopes(id: String, userId: String, scope: List<Int>): Long
 
     /**
      * 按 token_id + 用户查询,用于归属安全的撤销

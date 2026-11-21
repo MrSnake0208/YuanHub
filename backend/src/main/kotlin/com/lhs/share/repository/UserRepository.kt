@@ -6,6 +6,8 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.mongodb.repository.MongoRepository
 import org.springframework.data.mongodb.repository.Query
+import org.springframework.data.mongodb.repository.Update
+import java.time.Instant
 
 /**
  * 用户仓储
@@ -18,6 +20,14 @@ interface UserRepository : MongoRepository<MaaUser, String> {
      * 根据邮箱(用户唯一登录凭据)查询
      */
     fun findByEmail(email: String): MaaUser?
+
+    @Query("{ '_id': ?0, 'password': ?1 }")
+    @Update("{ '\$set': { 'password': ?2, 'pwdUpdateTime': ?3 } }")
+    fun changePassword(id: String, previous: String, encoded: String, changedAt: Instant): Long
+
+    @Query("{ '_id': ?0 }")
+    @Update("{ '\$set': { 'userName': ?1 } }")
+    fun changeUserName(id: String, name: String): Long
 
     /** 完整邮箱精确匹配, 忽略大小写。 */
     fun findByEmailIgnoreCase(email: String): MaaUser?

@@ -24,6 +24,7 @@ annotation class AccessLimit(
      * 指定 [second] 时间内,API 最多的请求次数
      */
     val times: Int = 30,
+    val byIp: Boolean = false,
     /**
      * 限流时间窗口,单位秒,同时也是 redis 数据过期时间
      */

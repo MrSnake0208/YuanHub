@@ -45,6 +45,34 @@ let refreshRequest = null
 let sessionGeneration = 0
 const userId = () => String(auth.userInfo?.id || '')
 
+// Decode only to match browser tabs. The API verifies every signature and expiry.
+function refreshIdentity(token) {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const { sub, jti, iat } = JSON.parse(atob(part))
+    if (!sub || !Number.isFinite(iat)) return null
+    return { session: jti || `legacy-refresh:${sub}:${iat}`, issued: iat }
+  } catch { return null }
+}
+
+function sameRefreshSession(left, right) {
+  if (left === right) return true
+  const session = refreshIdentity(left)?.session
+  return !!session && session === refreshIdentity(right)?.session
+}
+
+function adoptNewerRefresh() {
+  const latest = loadSaved()
+  if (!latest.accessToken || latest.userInfo?.id !== auth.userInfo?.id || latest.refreshToken === auth.refreshToken) return false
+  const before = refreshIdentity(auth.refreshToken)
+  const after = refreshIdentity(latest.refreshToken)
+  if (!before || !after || before.session !== after.session || after.issued < before.issued) return false
+  auth.accessToken = latest.accessToken
+  auth.refreshToken = latest.refreshToken
+  auth.refreshRejected = false
+  return true
+}
+
 function persist() {
   try {
     localStorage.setItem(
@@ -96,6 +124,7 @@ export const auth = reactive({
       auth.refreshRejected = true
       return false
     }
+    adoptNewerRefresh()
     const token = auth.refreshToken, identity = userId(), generation = sessionGeneration
     if (refreshRequest?.token === token && refreshRequest.identity === identity && refreshRequest.generation === generation) return refreshRequest.promise
     const current = () => generation === sessionGeneration && identity === userId() && token === auth.refreshToken
@@ -104,11 +133,14 @@ export const auth = reactive({
       try {
         const data = await userApi.refreshToken(token)
         if (!current()) return false
-        setTokens(data)
+        if (adoptNewerRefresh()) return true
+        const stored = loadSaved().refreshToken
+        setTokens(data, sameRefreshSession(token, stored))
         auth.refreshRejected = false
         return true
       } catch (error) {
         if (!current()) return false
+        if (adoptNewerRefresh()) return true
         // 只有后端明确拒绝才算登录态失效；超时 / 断网不能把用户直接踢下线。
         auth.refreshRejected = !!(error && (error.status === 401 || error.status === 403))
         return false
@@ -159,8 +191,13 @@ export const auth = reactive({
   },
 
   // 登出：清空状态并跳转登录页
-  async logout(destination = '/login') {
-    sessionGeneration++
+  async logout(destination = '/login', revoke = true) {
+    const generation = ++sessionGeneration
+    const oldRefresh = auth.refreshToken
+    if (revoke && oldRefresh) {
+      await userApi.endSession(oldRefresh, auth.accessToken)
+      if (sessionGeneration !== generation) return
+    }
     auth.accessToken = ''
     auth.refreshToken = ''
     auth.userInfo = null
@@ -168,7 +205,8 @@ export const auth = reactive({
     beta.setIdentity('')
     clearAdminAccess()
     try {
-      localStorage.removeItem(STORAGE_KEY)
+      const stored = loadSaved().refreshToken
+      if (sameRefreshSession(stored, oldRefresh)) localStorage.removeItem(STORAGE_KEY)
     } catch (_e) {
       // 与 persist 同理：storage 不可用时不影响内存中的登出结果。
     }
@@ -187,7 +225,7 @@ function clearAdminAccess() {
 }
 
 // 用登录 / 刷新接口的 data 更新并持久化 token 与用户信息
-export function setTokens(payload) {
+export function setTokens(payload, save = true) {
   if (!payload || typeof payload !== 'object') {
     throw new Error('登录响应异常：缺少 token 数据')
   }
@@ -200,7 +238,7 @@ export function setTokens(payload) {
   auth.refreshToken = refresh_token || ''
   auth.userInfo = user_info || auth.userInfo || null
   beta.setIdentity(auth.userInfo?.id || '')
-  persist()
+  if (save) persist()
   return auth
 }
 
@@ -229,6 +267,6 @@ export async function login(email, password) {
 export async function refresh() {
   return auth.refresh()
 }
-export async function logout(destination) {
-  return auth.logout(destination)
+export async function logout(destination, revoke = true) {
+  return auth.logout(destination, revoke)
 }

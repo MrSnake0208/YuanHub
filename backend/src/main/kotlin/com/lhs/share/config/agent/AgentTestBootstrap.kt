@@ -7,8 +7,9 @@ import com.lhs.share.hub.repository.AdminRoleBindingRepository
 import com.lhs.share.hub.repository.entity.AdminRole
 import com.lhs.share.hub.repository.entity.AdminRoleBinding
 import com.lhs.share.hub.service.admin.AdminAuthorizationService
-import com.lhs.share.repository.RedisCache
 import com.lhs.share.repository.UserRepository
+import com.lhs.share.service.EmailCodePurpose
+import com.lhs.share.service.EmailCodes
 import com.lhs.share.service.UserService
 import org.bson.Document
 import org.springframework.beans.factory.annotation.Qualifier
@@ -32,7 +33,7 @@ class AgentTestBootstrap(
     private val environment: Environment,
     private val users: UserService,
     private val userRepository: UserRepository,
-    private val codes: RedisCache,
+    private val codes: EmailCodes,
     private val redis: StringRedisTemplate,
     private val mongo: MongoTemplate,
     @param:Qualifier("hubMongoTemplate") private val hub: MongoTemplate,
@@ -62,7 +63,7 @@ class AgentTestBootstrap(
             if (userRepository.findByEmail(email) == null) {
                 val code = UUID.randomUUID().toString().replace("-", "").take(6).uppercase()
                 // Seed only this owned sandbox's single-use code; never send or log it.
-                codes.setCache("vCodeEmail:$email", code, 60L)
+                codes.issue(email, EmailCodePurpose.REGISTER, code, 60L)
                 users.register(RegisterDTO(email, name, password, code))
             }
             val userId = users.login(LoginDTO(email, password)).userInfo.id

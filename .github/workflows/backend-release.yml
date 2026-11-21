@@ -121,6 +121,7 @@ jobs:
       - name: Require concentrated release evidence
         working-directory: .
         env:
+          YUANHUB_RELEASE_METADATA_TOKEN: ${{ secrets.YUANHUB_RELEASE_METADATA_TOKEN }}
           GH_TOKEN: ${{ github.token }}
           API_BASE: ${{ vars.YUANHUB_FRONTEND_API_BASE }}
           DEPLOYMENT_URL: ${{ vars.YUANHUB_BACKEND_URL }}
@@ -228,24 +229,21 @@ jobs:
       - name: Verify public deployment from GitHub runner
         if: ${{ inputs.phase != 'prepare' }}
         env:
+          YUANHUB_RELEASE_METADATA_TOKEN: ${{ secrets.YUANHUB_RELEASE_METADATA_TOKEN }}
           BACKEND_URL: ${{ vars.YUANHUB_BACKEND_URL }}
         shell: bash
         run: |
           set -euo pipefail
           base="${BACKEND_URL%/}"
           for attempt in $(seq 1 10); do
-            payload="$(curl --fail --silent --show-error --location --max-time 10 \
-              -H 'Cache-Control: no-cache' \
+            payload="$(curl --fail --silent --show-error --max-time 10 \
+              -H 'Cache-Control: no-cache' -H "X-Release-Metadata: $YUANHUB_RELEASE_METADATA_TOKEN" \
               "$base/version?deploy=$BACKEND_RELEASE_COMMIT" || true)"
             version="$(printf '%s' "$payload" | jq -r '.data.backend_version // ""' 2>/dev/null || true)"
-            commit="$(printf '%s' "$payload" | jq -r '.data.backend_commit // ""' 2>/dev/null || true)"
-            if [ "$version" = "$BACKEND_RELEASE_VERSION" ] && [ -n "$commit" ]; then
-              case "$BACKEND_RELEASE_COMMIT" in
-                "$commit"*)
-                  echo "Verified public backend: version=$version commit=$commit"
-                  exit 0
-                  ;;
-              esac
+            commit="$(printf '%s' "$payload" | jq -r '.data.git.commit_id // .data.backend_commit // ""' 2>/dev/null || true)"
+            if [ "$version" = "$BACKEND_RELEASE_VERSION" ] && [ "$commit" = "$BACKEND_RELEASE_COMMIT" ]; then
+              echo "Verified public backend: version=$version commit=$commit"
+              exit 0
             fi
             echo "Attempt $attempt: version='$version' commit='$commit'"
             sleep 3

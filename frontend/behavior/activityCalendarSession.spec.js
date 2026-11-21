@@ -71,3 +71,21 @@ it('A权限读取迟到不会覆盖B权限，新身份可独立读取，旧final
   expect(auth.adminAccess.permissions).toEqual(['activity_calendar:write'])
   expect(auth.adminAccessLoading).toBe(false)
 })
+
+it('休眠标签页恢复时使用同一会话的新刷新凭据', async () => {
+  const credential = iat => 'fixture.' + btoa(JSON.stringify({ sub: 'a', jti: 'session-a', iat })) + '.signature'
+  setTokens({ ...tokens('a'), refresh_token: credential(100) })
+  localStorage.setItem('yh_auth', JSON.stringify({ accessToken: 'other-tab', refreshToken: credential(200), userInfo: { id: 'a' } }))
+  fetch.mockResolvedValueOnce(response(200, { ...tokens('a'), refresh_token: credential(300) }))
+  expect(await auth.refresh()).toBe(true)
+  expect(JSON.parse(fetch.mock.calls[0][1].body).refresh_token).toBe(credential(200))
+  expect(JSON.parse(localStorage.getItem('yh_auth')).refreshToken).toBe(credential(300))
+})
+
+it('退出时网络中断仍保留本地登录，允许恢复网络后重试', async () => {
+  fetch.mockRejectedValueOnce(new TypeError('offline'))
+  await expect(auth.logout()).rejects.toThrow('offline')
+  expect(auth.refreshToken).toBe('refresh-a')
+  expect(JSON.parse(localStorage.getItem('yh_auth')).refreshToken).toBe('refresh-a')
+  expect(fetch.mock.calls[0][0]).toBe('/user/logout')
+})

@@ -108,7 +108,7 @@ async function sendCode() {
   sending.value = true
   try {
     await sendRegistrationToken({ email: form.email })
-    codeMsg.value = '验证码已发送，请注意查收'
+    codeMsg.value = '若邮箱可用于注册，你会收到验证码，请查看收件箱。'
     startCountdown()
   } catch (e) {
     codeMsg.value = (e && e.message) || '发送失败，请稍后再试'

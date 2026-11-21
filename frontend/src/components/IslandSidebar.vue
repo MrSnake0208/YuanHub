@@ -434,7 +434,17 @@ function updateNavFade() {
 async function onLogout() {
   closeAccountMenu(true);
   const confirmed = await dialog.confirm({ title: '退出登录？', message: '退出后需要重新登录才能访问个人数据。', confirmText: '退出登录' });
-  if (confirmed) await doLogout('/login?loggedOut=1');
+  if (!confirmed) return;
+  try {
+    await doLogout('/login?loggedOut=1');
+  } catch {
+    const localOnly = await dialog.confirm({
+      title: '暂时无法联系服务器',
+      message: '可以恢复网络后重试，也可以先清除这个浏览器的登录信息。服务器上的会话可能仍然有效。',
+      confirmText: '仅清除本机登录',
+    });
+    if (localOnly) await doLogout('/login?loggedOut=1', false);
+  }
 }
 
 function toggleMenu() {

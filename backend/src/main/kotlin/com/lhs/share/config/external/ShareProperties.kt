@@ -46,7 +46,7 @@ data class ShareProperties(
         /**
          * JWT 签名密钥,生产环境务必更换
          */
-        var secret: String = "please-change-me-to-a-long-random-secret",
+        var secret: String = "",
         /**
          * AccessToken 过期时间,单位秒
          */

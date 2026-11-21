@@ -1,4 +1,5 @@
 """Private application ports and shared local databases for the current Git worktree."""
+import base64
 import hashlib
 import fcntl
 import json
@@ -8,6 +9,25 @@ import secrets
 import shlex
 import socket
 import subprocess
+
+
+def local_storage_key(directory):
+    # All local worktrees use the same HubBackend, so their credential key is shared per OS user.
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fd = os.open(directory / 'openapi-local.key', os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, 'r+') as stream:
+        fcntl.flock(stream, fcntl.LOCK_EX)
+        if os.fstat(stream.fileno()).st_mode & 0o077:
+            raise ValueError('OpenAPI local storage key must be private (chmod 600)')
+        key = stream.read().strip()
+        if not key:
+            key = base64.b64encode(secrets.token_bytes(32)).decode('ascii')
+            stream.write(key + '\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        if len(base64.b64decode(key, validate=True)) != 32:
+            raise ValueError('Invalid existing OpenAPI local storage key')
+        return key
 
 
 def configuration(root):
@@ -85,5 +105,8 @@ if __name__ == '__main__':
     import sys
     root = Path(subprocess.check_output(['git','rev-parse','--show-toplevel'], text=True).strip())
     os.umask(0o077)
-    for key, value in exports(configuration(root), sys.argv[1] if len(sys.argv) > 1 else 'local').items():
+    values = exports(configuration(root), sys.argv[1] if len(sys.argv) > 1 else 'local')
+    config_home = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config')
+    values['YUANHUB_OPENAPI_STORAGE_KEY'] = local_storage_key(config_home / 'yuanhub')
+    for key, value in values.items():
         print('export ' + key + '=' + shlex.quote(value))

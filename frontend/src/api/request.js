@@ -228,7 +228,7 @@ export async function request(
         if (!store.refreshRejected) return 'transient';
       }
       // 刷新失败或明确无 refreshToken：清登录态并跳转登录页
-      await store.logout();
+      await store.logout('/login', false);
       if (typeof location !== "undefined") {
         location.href = "/login";
       }

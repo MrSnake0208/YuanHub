@@ -10,6 +10,8 @@ import com.lhs.share.repository.entity.MaaUser
 import com.lhs.share.service.jwt.JwtService
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -33,6 +35,9 @@ class UserServiceTest {
         passwordEncoder,
         userDetailService,
         jwtService,
+        mockk {
+            every { start(any(), any()) } answers { jwtService.issueRefreshToken(firstArg(), "test-session") }
+        },
     )
 
     private fun user(
@@ -93,7 +98,7 @@ class UserServiceTest {
             registrationToken = "ABC123",
         )
         every { userRepository.existsByUserName("newuser") } returns false
-        every { emailService.verifyVCode("new@test.com", "ABC123") } returns Unit
+        every { emailService.verifyVCode("new@test.com", EmailCodePurpose.REGISTER, "ABC123") } returns Unit
         every { userRepository.save(any()) } answers { firstArg<MaaUser>().copy(userId = "new-id") }
 
         val info = userService.register(dto)
@@ -126,14 +131,39 @@ class UserServiceTest {
             activeCode = "ABC123",
             password = "newpassword123",
         )
-        every { emailService.verifyVCode("u1@test.com", "ABC123") } returns Unit
+        every { emailService.verifyVCode("u1@test.com", EmailCodePurpose.RESET_PASSWORD, "ABC123") } returns Unit
         every { userRepository.findByEmail("u1@test.com") } returns u
         every { userRepository.findById("u1") } returns java.util.Optional.of(u)
-        every { userRepository.save(any()) } answers { firstArg() }
+        val encoded = slot<String>()
+        every { userRepository.changePassword("u1", u.password, capture(encoded), any()) } returns 1L
 
         userService.modifyPasswordByActiveCode(dto)
 
-        assertTrue(passwordEncoder.matches("newpassword123", u.password))
+        assertTrue(passwordEncoder.matches("newpassword123", encoded.captured))
+        verify(exactly = 0) { userRepository.save(any()) }
+    }
+
+    @Test
+    fun `blank directory queries are rejected and regex characters are searched literally`() {
+        val page = org.springframework.data.domain.PageRequest.of(0, 10)
+        assertThrows(ApiResultException::class.java) { userService.search("   ", page) }
+        every { userRepository.searchUsers(Regex.escape("a.b"), page) } returns org.springframework.data.domain.Page.empty()
+        userService.search("  a.b  ", page)
+        verify(exactly = 1) { userRepository.searchUsers(Regex.escape("a.b"), page) }
+    }
+
+    @Test
+    fun `only eligible email addresses receive the requested purpose`() {
+        every { userRepository.findByEmail("taken@test.com") } returns user()
+        every { userRepository.findByEmail("free@test.com") } returns null
+        every { emailService.sendVCode(any(), any()) } returns Unit
+        for (email in listOf("taken@test.com", "free@test.com")) {
+            userService.deliverCode(email, EmailCodePurpose.REGISTER)
+            userService.deliverCode(email, EmailCodePurpose.RESET_PASSWORD)
+        }
+        verify(exactly = 1) { emailService.sendVCode("taken@test.com", EmailCodePurpose.RESET_PASSWORD) }
+        verify(exactly = 1) { emailService.sendVCode("free@test.com", EmailCodePurpose.REGISTER) }
+        verify(exactly = 2) { emailService.sendVCode(any(), any()) }
     }
 
     @Test

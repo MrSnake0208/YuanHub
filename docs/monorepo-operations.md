@@ -101,3 +101,20 @@ publish 首先要求本地测试记录 SHA 匹配、覆盖所选组件且各命�
 后端使用保留的旧 JAR 与精确 SHA/metadata，启动非活动 slot，通过 readiness、公共 /version 和 HubBackend 链路后再切流；失败恢复旧 slot。自动发布需要对应集中检查 artifact（当前保留 7 天）；过期时先在 GitHub Runner 重建并验证，不能在生产服务器补编译。旧多仓版本继续从保留产物恢复，不重打旧标签、不回滚数据库。
 
 本地 fixture 验证不能替代生产演练。迁移历史、PR37 处理及正式 clone 顺序见 [迁移说明](migration/README.md) 与 [切换清单](migration/cutover.md)。
+
+
+### 认证和连接码版本的上线准备
+
+本机 `./dev.sh` 首次运行会为开发库生成专用随机密钥，保存在 `${XDG_CONFIG_HOME:-~/.config}/yuanhub/openapi-local.key`（0600），同一用户的工作树共用。备份本机开发库时分开保管该文件。
+
+1. 后端所有运行实例的 `shared/backend.env` 配置 `YUANHUB_OPENAPI_STORAGE_KEY`，取密码学随机的 32 字节并以标准 Base64 编码。与数据库分开保存并备份，同一部署的所有实例使用同一值。现有连接码的再次复制依赖此密钥，请勿直接覆盖轮换。生产 JWT 继续使用当前生效的强密钥。启动会拒绝缺失、仓库示例或少于 48 字符的 JWT 配置，也会拒绝验证码日志调试开关。若现网密钥不合格，新槽应保持离线；更换签名密钥会影响旧登录，须单独安排。
+2. 另配一个仅用于读取发布元数据的随机凭据 `YUANHUB_RELEASE_METADATA_TOKEN`（建议 32 字节转十六进制）。后端 `shared/backend.env` 使用不带引号的 `名称=值` 单行，同时配置本地发布进程和两个 GitHub production Environment 的同名 secret。公开 `/version` 保留版本号；发布工具使用 HTTPS 请求头核对实际实例的完整提交。切流前先验证新槽能读取完整 SHA。
+3. 先发布兼容后端再发布前端；在旧后端停止接流前不要开始转换历史凭据。新后端兼容历史明文记录，新建连接码只写摘要和 AES-GCM 密文。切回只懂明文的旧二进制会影响新建或已转换连接；需要回退时使用包含凭据兼容读取与会话吊销校验的版本。
+4. 获得生产数据操作授权并备份后，在有受控数据库连接的环境注入同一 `YUANHUB_OPENAPI_STORAGE_KEY`。用 `mongosh HubBackend --file backend/scripts/migrations/20261121-openapi-credentials.js` 预览。使用自定义 Hub 库名时，同时指定目标数据库和同名环境变量 `YUANHUB_CREDENTIAL_DATABASE`。确认后附加环境变量 `YUANHUB_APPLY_CREDENTIAL_MIGRATION=yes` 执行，再次预览应显示 `legacy: 0`。迁移仅条件更新本行凭据字段；撤销的行不会重建，用户已配置的连接码继续使用原值。
+5. 新版鉴权只读 Mongo。确认目标 Redis 实例和 DB、旧服务已全部退出且 `open-api-token:*` 专属于该应用后，单独授权清除旧的永久明文键。用下方脚本分批扫描，只输出游标，不输出凭据。先从游标 0 开始，再传回上一轮结果，直到返回 0。历史备份按现有保留策略管理。
+
+```sh
+redis-cli --raw EVAL "local r=redis.call('SCAN',ARGV[1],'MATCH','open-api-token:*','COUNT',200); for _,k in ipairs(r[2]) do redis.call('UNLINK',k) end; return r[1]" 0 0
+```
+
+示例 Mongo API 仅在 local 且非 prod 环境注册。生产默认关闭 Swagger UI 和 API Docs，本地与测试配置显式开启。认证入口按 Tomcat 确认的来源限流；默认信任回环代理。使用其他网关拓扑时配置受信代理并在最外层覆盖客户端传入的转发头。

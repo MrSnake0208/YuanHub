@@ -1,5 +1,6 @@
 """Release safety checks use temporary Git repos and mocked GitHub/production reads."""
 import argparse
+import io
 from datetime import datetime, timezone, timedelta
 import json
 import os
@@ -41,6 +42,19 @@ def frontend_prepared():
 
 
 class ReleaseGateTest(unittest.TestCase):
+    def test_backend_metadata_credential_is_scoped_to_the_configured_https_origin(self):
+        config = {'YUANHUB_BACKEND_URL': 'https://backend.example'}
+        with patch.dict(os.environ, YUANHUB_RELEASE_METADATA_TOKEN='fixture'), patch.object(gate, 'build_opener') as opener:
+            opener.return_value.open.return_value = io.BytesIO(json.dumps({
+                'data': {'backend_version': 'v1.2.3', 'git': {'commit_id': SHA}}
+            }).encode())
+            self.assertEqual(gate.deployed(config, 'backend'), dict(version='1.2.3', commit=SHA))
+            request = opener.return_value.open.call_args.args[0]
+            self.assertEqual(dict((k.lower(), v) for k, v in request.header_items())['x-release-metadata'], 'fixture')
+            self.assertTrue(request.full_url.startswith('https://backend.example/version?'))
+            self.assertIsNone(opener.call_args.args[0].redirect_request(request, None, 302, '', {}, 'https://other.example'))
+
+
     def test_exact_completed_successful_main_run_only(self):
         run = successful_run()
         gate.validate_run(run, SHA, NOW)

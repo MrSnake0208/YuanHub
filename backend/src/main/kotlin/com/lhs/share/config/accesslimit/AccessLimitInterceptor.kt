@@ -35,7 +35,7 @@ class AccessLimitInterceptor(
     @Throws(Exception::class)
     override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
         val ann = (handler as? HandlerMethod)?.method?.getAnnotation(AccessLimit::class.java) ?: return true
-        val userId = authenticationHelper.obtainUserId()
+        val userId = if (ann.byIp) null else authenticationHelper.obtainUserId()
         val identity = if (userId != null) "user:$userId" else "ip:${IpUtil.getIpAddr(request)}"
         val key = "access-limit:$identity:${request.method}:${request.requestURI}"
 

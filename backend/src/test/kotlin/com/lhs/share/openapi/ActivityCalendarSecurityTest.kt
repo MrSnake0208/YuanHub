@@ -77,6 +77,9 @@ import java.time.LocalDate
     com.lhs.share.config.security.BetaAccessInterceptor::class,
 )
 class ActivityCalendarSecurityTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    lateinit var loginSessions: com.lhs.share.service.jwt.LoginSessions
+
     @Autowired lateinit var mvc: MockMvc
 
     @MockitoBean lateinit var privateItems: CalendarPrivateItemService

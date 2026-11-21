@@ -31,7 +31,7 @@ const PLATFORM_ADMIN = {
 }
 
 async function resetAuth(payload) {
-  await auth.logout()
+  await auth.logout('/login', false)
   setTokens(payload)
   auth.adminAccessLoaded = false
 }

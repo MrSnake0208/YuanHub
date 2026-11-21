@@ -27,8 +27,10 @@ spring:
 server:
   port: 8080
   shutdown: graceful
-  forward-headers-strategy: framework
+  forward-headers-strategy: native
   tomcat:
+    remoteip:
+      internal-proxies: '127\.0\.0\.1|0:0:0:0:0:0:0:1|::1'
     # 限制 post 表单最大为 30KB
     max-http-form-post-size: 30KB
     # 星石完整背包采集为 13 张 PNG 加 manifest，共 14 个 multipart parts。
@@ -67,6 +69,8 @@ openapi:
 
 # 应用自定义配置
 share:
+  openapi:
+    storage-key: ${YUANHUB_OPENAPI_STORAGE_KEY:}
   cors:
     # 本地默认保持兼容；生产环境必须通过环境变量收敛为实际前端域名。
     allowed-origin-patterns: "${SHARE_CORS_ALLOWED_ORIGIN_PATTERNS:*}"
@@ -85,7 +89,7 @@ share:
     # RefreshToken 过期时间,单位秒
     refresh-expire: 604800
     # JWT 签名密钥,生产环境务必更换为随机长字符串
-    secret: please-change-me-to-a-long-random-secret
+    secret: ${SHARE_JWT_SECRET:}
   cache:
     # 缓存默认过期时间,单位秒
     default-expire: 60
@@ -139,14 +143,14 @@ share:
 debug:
   email:
     # 本地调试:true 时不真实发邮件,验证码打印到日志
-    no-send: true
+    no-send: false
 
 springdoc:
   swagger-ui:
     # 开启 Swagger UI 界面
-    enabled: true
+    enabled: false
   api-docs:
     # 开启 api-docs
-    enabled: true
+    enabled: false
   # 配置需要生成接口文档的扫描包
   packages-to-scan: com.lhs.share

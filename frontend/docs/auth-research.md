@@ -1,7 +1,7 @@
 # 认证功能 · 研究结论（researcher 交付）
 
 > 来源：对照 /Users/mrsnake/Desktop/yituliu/BackEndV3-Share 源码一一核实。
-> 完整契约见 docs/api-contract.md（已存在且与后端源码一致，无缺漏）。
+> 本文保留最初的研究记录。当前鉴权、发码和会话规则见[接口契约](api-contract.md)。
 
 ## 1. 后端事实（从源码读出的硬约束）
 

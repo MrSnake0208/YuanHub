@@ -59,6 +59,13 @@ export function refreshToken(refreshToken) {
   })
 }
 
+export function endSession(refreshToken, accessToken) {
+  return request('/user/logout', {
+    method: 'POST', body: { refresh_token: refreshToken },
+    headers: accessToken ? { Authorization: 'Bearer ' + accessToken } : {}
+  })
+}
+
 // 用户公开信息（公开）
 export function getUserInfo(userId) {
   return request(`/user/info?userId=${encodeURIComponent(userId)}`)
@@ -113,12 +120,12 @@ export async function searchFeedbackAccessUsers({ q, page = 1, size = 10 }) {
   return users.map(normalizeFeedbackAccessUser)
 }
 
-// 用户搜索（公开，size≤50）
+// 用户搜索（需登录，size≤50）
 export function searchUsers({ userName, page, size }) {
   const params = new URLSearchParams()
   if (userName != null && userName !== '') params.set('userName', userName)
   if (page != null) params.set('page', String(page))
   if (size != null) params.set('size', String(size))
   const qs = params.toString()
-  return request(`/user/search${qs ? '?' + qs : ''}`)
+  return request(`/user/search${qs ? '?' + qs : ''}`, { auth: true })
 }

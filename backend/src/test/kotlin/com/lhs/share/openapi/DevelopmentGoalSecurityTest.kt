@@ -41,6 +41,9 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
     DataTransferService::class,
 )
 class DevelopmentGoalSecurityTest {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    lateinit var loginSessions: com.lhs.share.service.jwt.LoginSessions
+
     @MockitoBean lateinit var authorization: com.lhs.share.hub.service.admin.AdminAuthorizationService
 
     @Autowired lateinit var mvc: MockMvc

@@ -130,7 +130,7 @@ test('版本检查（deploy-meta.json）复用同一套超时工具：挂起会�
 })
 
 test('Case 6：401 → 刷新一次 → 重放；重放仍 401 时立即结束，不无限刷新', async function () {
-  await auth.logout()
+  await auth.logout('/login', false)
   setTokens({ token: 'expired-access', refresh_token: 'refresh-1', user_info: { id: 'u1' } })
   const backend = installFetch([
     { method: 'GET', path: ROLES_USERS, respond: () => unauthorized() },
@@ -155,7 +155,7 @@ test('Case 6：401 → 刷新一次 → 重放；重放仍 401 时立即结束�
 })
 
 test('本次请求 401 时 token 已被其他请求换新，则直接重放而不再刷新', async function () {
-  await auth.logout()
+  await auth.logout('/login', false)
   setTokens({ token: 'expired-access', refresh_token: 'refresh-1', user_info: { id: 'u1' } })
   const backend = installFetch([
     // 第一条请求立即 401，触发刷新；第二条延迟到刷新完成后才 401。

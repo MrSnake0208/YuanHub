@@ -261,6 +261,19 @@ it('手机导航明确标出当前页，展开后可发现首尾入口和内测�
   const betaLink = wrapper.findAllComponents(RouterLinkStub).find(link => link.props('to') === '/beta' && link.element.closest('#mobile-main-nav'))
   expect(betaLink?.find('svg').exists()).toBe(true)
 })
+it.each([false, true])('退出请求离线时仅按用户选择清除本机登录：%s', async localOnly => {
+  auth.accessToken = 'fixture'; auth.userInfo = { id: 'offline-user' }
+  const wrapper = render()
+  await wrapper.get('.mobile-menu-button').trigger('click')
+  dialog.confirm.mockResolvedValueOnce(true).mockResolvedValueOnce(localOnly)
+  logout.mockRejectedValueOnce(new TypeError('offline'))
+  await wrapper.get('.mobile-drawer-logout').trigger('click')
+  await flushPromises()
+  expect(dialog.confirm).toHaveBeenLastCalledWith(expect.objectContaining({ confirmText: '仅清除本机登录' }))
+  expect(logout).toHaveBeenCalledTimes(localOnly ? 2 : 1)
+  if (localOnly) expect(logout).toHaveBeenLastCalledWith('/login?loggedOut=1', false)
+})
+
 it('手机登出先确认，取消不清会话，确认后显示登录结果入口', async () => {
   auth.accessToken = 'test-only'; auth.userInfo = { user_name: '测试殿下' }
   const wrapper = render()

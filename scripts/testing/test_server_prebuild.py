@@ -77,6 +77,7 @@ elif name == 'curl':
     elif '/v1/beta/status' in url:
         print('{"data":{}}')
     else:
+        assert '@-' in args and sys.stdin.readline().strip() == 'X-Release-Metadata: fixture-readonly'
         old_port = '8081' if os.environ.get('TARGET_PORT') == '8080' else '8080'
         old = (':' + old_port + '/') in url or (url.startswith('https://') and os.environ.get('PUBLIC_FAIL'))
         print(json.dumps({'data': {'backend_version': 'v0.1.12' if old else os.environ['RELEASE_VERSION'],
@@ -179,7 +180,7 @@ class ServerPrebuildTest(unittest.TestCase):
         (self.server / 'slots/blue.env').write_text('YUANHUB_JAR=' + str(jar) + '\n')
         (self.server / 'state/active-slot').write_text('blue\n')
         (self.server / 'nginx/active.conf').write_text('server 127.0.0.1:8080 max_fails=1 fail_timeout=3s;\n')
-        (self.server / 'shared/backend.env').write_text('fixture=true\n')
+        (self.server / 'shared/backend.env').write_text('YUANHUB_RELEASE_METADATA_TOKEN=fixture-readonly\n')
 
     def active_backend(self):
         return [(self.server / path).read_bytes() for path in

@@ -29,9 +29,13 @@ class JwtAuthToken : JwtToken, Authentication {
         nbf: Instant,
         authorities: Collection<GrantedAuthority>,
         key: ByteArray,
+        refreshIssuedAt: Instant? = null,
     ) : super(sub, jti, iat, exp, nbf, TYPE, key) {
         this.authorities = authorities
+        refreshIssuedAt?.let { jwt.setPayload("refresh_iat", it.toEpochMilli()) }
     }
+
+    val refreshIssuedAt: Long? get() = jwt.payloads.getLong("refresh_iat")
 
     override fun getAuthorities(): Collection<GrantedAuthority> {
         val authorityStrings = jwt.payloads.getStr(CLAIM_AUTHORITIES)
@@ -48,7 +52,7 @@ class JwtAuthToken : JwtToken, Authentication {
     /**
      * @return credentials,采用 jwt 的 id
      */
-    override fun getCredentials(): Any = jwtId!!
+    override fun getCredentials(): Any? = jwtId
 
     override fun getDetails(): Any? = null
 

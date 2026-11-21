@@ -12,6 +12,8 @@ spring:
       timeout: 250ms
       connect-timeout: 250ms
 share:
+  openapi:
+    storage-key: bG9jYWwtdGVzdC1vbmx5LWtleS0wMTIzNDU2Nzg5MDE=
   mongo:
     hub-uri: mongodb://127.0.0.1:1/yuanhub_test_unit_hub?serverSelectionTimeoutMS=50&connectTimeoutMS=50
   beta:
@@ -38,3 +40,9 @@ logging:
   level:
     org.mongodb.driver: WARN
     org.springframework.data.convert.CustomConversions: ERROR
+
+springdoc:
+  swagger-ui:
+    enabled: true
+  api-docs:
+    enabled: true
