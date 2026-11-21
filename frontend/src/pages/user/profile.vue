@@ -384,81 +384,115 @@
                   连接 MaaYuan
                 </button>
               </div>
-              <ul v-else class="token-list">
-                <li
-                  v-for="tokenItem in tokens"
-                  :key="tokenItem.token_id"
-                  class="token-item"
-                >
-                  <div
-                    class="connection-icon"
-                    :class="{ maayuan: supportsMaaYuan(tokenItem) }"
-                    aria-hidden="true"
-                  >
-                    <img
-                      v-if="supportsMaaYuan(tokenItem)"
-                      src="/icons/maa.webp"
-                      alt=""
-                    />
-                    <KeyRound v-else :size="21" />
-                  </div>
-                  <div class="connection-main">
-                    <div class="connection-title-row">
-                      <h4>{{ tokenLabel(tokenItem) }}</h4>
-                      <span
-                        v-if="supportsMaaYuan(tokenItem)"
-                        class="status-tag ready"
-                        >已授权 MaaYuan</span
+              <div v-else class="connection-groups">
+                <div v-for="group in connectionGroups" :key="group.key">
+                  <h4 class="connection-group-heading">
+                    <component
+                      :is="canCollapseConnectionGroups ? 'button' : 'span'"
+                      class="connection-group-label"
+                      :class="{ 'connection-group-toggle': canCollapseConnectionGroups }"
+                      :type="canCollapseConnectionGroups ? 'button' : undefined"
+                      :aria-expanded="canCollapseConnectionGroups ? !isConnectionGroupCollapsed(group.key) : undefined"
+                      :aria-controls="canCollapseConnectionGroups ? connectionGroupListId(group.key) : undefined"
+                      @click="toggleConnectionGroup(group.key)"
+                    >
+                      <span class="connection-group-label-content">
+                        <span>{{ group.name }}</span>
+                        <span
+                          v-if="group.game"
+                          class="status-tag connection-game"
+                          :class="{
+                            'is-daihao': group.game === '代号鸢',
+                            'is-ruyuan': group.game === '如鸢',
+                          }"
+                        >
+                          {{ group.game }}
+                        </span>
+                        <span v-if="!group.deleted || isConnectionGroupCollapsed(group.key)" class="connection-group-count">
+                          <template v-if="!group.deleted">{{ group.tokens.length }} 条</template>
+                          <template v-if="isConnectionGroupCollapsed(group.key)">{{ group.deleted ? "已折叠" : " · 已折叠" }}</template>
+                        </span>
+                      </span>
+                      <ChevronDown v-if="canCollapseConnectionGroups" class="connection-group-chevron" :size="18" aria-hidden="true" />
+                    </component>
+                  </h4>
+                  <ul :id="connectionGroupListId(group.key)" v-show="!isConnectionGroupCollapsed(group.key)" class="token-list">
+                    <li
+                      v-for="tokenItem in group.tokens"
+                      :key="tokenItem.token_id"
+                      class="token-item"
+                    >
+                      <div
+                        class="connection-icon"
+                        :class="{ maayuan: supportsMaaYuan(tokenItem) }"
+                        aria-hidden="true"
                       >
-                      <span v-else class="status-tag">自定义权限</span>
-                    </div>
-                    <p class="connection-account">
-                      游戏账号：<b>{{
-                        tokenItem.account_name || tokenItem.account_id
-                      }}</b>
-                    </p>
-                    <p class="connection-scope connection-scope-desktop">
-                      可以：{{ scopeDesc(tokenItem.scopes) }}
-                    </p>
-                    <details class="connection-permissions">
-                      <summary>{{ scopeSummary(tokenItem.scopes) }}<ChevronDown :size="15" aria-hidden="true" /></summary>
-                      <p>完整权限：{{ scopeDesc(tokenItem.scopes) }}</p>
-                      <button v-if="!scopeKeys(tokenItem.scopes).length" class="text-btn" type="button" :disabled="busy" @click="loadTokens">重新读取连接</button>
-                    </details>
-                    <p v-if="tokenItem.created_at" class="connection-created">
-                      创建于 {{ formatCreateTime(tokenItem.created_at) }}
-                    </p>
-                  </div>
-                  <div class="connection-actions">
-                    <button
-                      class="t-btn copy"
-                      type="button"
-                      :disabled="busy"
-                      @click="copyExistingToken(tokenItem)"
-                      :class="{ 'tutorial-target': maaGuideActive && onboarding.waitingFor === 'maa_copy' && onboarding.maaYuan.connectionId === tokenItem.token_id }"
-                    >
-                      <Copy :size="15" aria-hidden="true" />{{ copyingTokenId === tokenItem.token_id ? "正在复制…" : "复制连接码" }}
-                    </button>
-                    <button
-                      class="t-btn del"
-                      type="button"
-                      :disabled="busy"
-                      @click="removeToken(tokenItem)"
-                    >
-                      停止连接
-                    </button>
-                    <button
-                      v-if="!supportsMaaYuan(tokenItem)"
-                      class="t-btn update"
-                      type="button"
-                      :disabled="busy"
-                      @click="upgradeForMaaYuan(tokenItem)"
-                    >
-                      {{ updatingTokenId === tokenItem.token_id ? "正在更新…" : "补齐 MaaYuan 同步权限" }}
-                    </button>
-                  </div>
-                </li>
-              </ul>
+                        <img
+                          v-if="supportsMaaYuan(tokenItem)"
+                          src="/icons/maa.webp"
+                          alt=""
+                        />
+                        <KeyRound v-else :size="21" />
+                      </div>
+                      <div class="connection-main">
+                        <div
+                          v-if="TUTORIALS_ENABLED && maaConnectionTutorialOutletId && onboarding.maaYuan.connectionId === tokenItem.token_id"
+                          :id="maaConnectionTutorialOutletId"
+                        />
+                        <div class="connection-title-row">
+                          <h5>{{ tokenLabel(tokenItem) }}</h5>
+                          <span v-if="tokenItem.token_hint" class="connection-code-hint">尾号 {{ tokenItem.token_hint }}</span>
+                          <span
+                            v-if="supportsMaaYuan(tokenItem)"
+                            class="status-tag ready"
+                            >已授权 MaaYuan</span
+                          >
+                          <span v-else class="status-tag">自定义权限</span>
+                        </div>
+                        <p class="connection-scope connection-scope-desktop">
+                          可以：{{ scopeDesc(tokenItem.scopes) }}
+                        </p>
+                        <details class="connection-permissions">
+                          <summary>{{ scopeSummary(tokenItem.scopes) }}<ChevronDown :size="15" aria-hidden="true" /></summary>
+                          <p>完整权限：{{ scopeDesc(tokenItem.scopes) }}</p>
+                          <button v-if="!scopeKeys(tokenItem.scopes).length" class="text-btn" type="button" :disabled="busy" @click="loadTokens">重新读取连接</button>
+                        </details>
+                        <p v-if="tokenItem.created_at" class="connection-created">
+                          创建于 {{ formatCreateTime(tokenItem.created_at) }}
+                        </p>
+                      </div>
+                      <div class="connection-actions">
+                        <button
+                          class="t-btn copy"
+                          type="button"
+                          :disabled="busy"
+                          @click="copyExistingToken(tokenItem)"
+                          :class="{ 'tutorial-target': maaGuideActive && onboarding.waitingFor === 'maa_copy' && onboarding.maaYuan.connectionId === tokenItem.token_id }"
+                        >
+                          <Copy :size="15" aria-hidden="true" />{{ copyingTokenId === tokenItem.token_id ? "正在复制…" : "复制连接码" }}
+                        </button>
+                        <button
+                          class="t-btn del"
+                          type="button"
+                          :disabled="busy"
+                          @click="removeToken(tokenItem)"
+                        >
+                          停止连接
+                        </button>
+                        <button
+                          v-if="canUpgradeForMaaYuan(tokenItem)"
+                          class="t-btn update"
+                          type="button"
+                          :disabled="busy"
+                          @click="upgradeForMaaYuan(tokenItem)"
+                        >
+                          {{ updatingTokenId === tokenItem.token_id ? "正在更新…" : "补齐 MaaYuan 同步权限" }}
+                        </button>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </section>
 
             <details class="advanced-zone" @focusin="addingConnection = true">
@@ -677,6 +711,7 @@ const maaTutorialTarget = computed(() => {
   if (showMaaYuanConnect.value && ['maa_account', 'maa_create'].includes(onboarding.waitingFor)) return '#maayuan-tutorial-form';
   if (['maa_copy', 'maa_sync', 'verified'].includes(onboarding.waitingFor)) {
     if (newToken.value?.token_id === onboarding.maaYuan.connectionId) return '#maayuan-tutorial-copy';
+    if (maaConnectionTutorialOutletId.value) return `[id="${maaConnectionTutorialOutletId.value}"]`;
     if (tokens.value.some(token => token.token_id === onboarding.maaYuan.connectionId)) return '#maayuan-tutorial-connection';
   }
   return '#maayuan-tutorial-start';
@@ -684,6 +719,31 @@ const maaTutorialTarget = computed(() => {
 const tokens = ref([]);
 const permissions = ref([]);
 const accounts = ref([]);
+const connectionGroups = computed(() => {
+  const accountsById = new Map(accounts.value.map(account => [account.id, account]));
+  const groups = new Map();
+  // 列表已按创建时间倒序，首次遇到的连接决定该组的位置。
+  for (const tokenItem of tokens.value) {
+    const account = accountsById.get(tokenItem.account_id);
+    const deleted = !account && tokenItem.account_name === "已删除账号";
+    const key = deleted ? "deleted" : `account:${tokenItem.account_id}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        deleted,
+        name: account?.name || tokenItem.account_name || tokenItem.account_id,
+        game: account?.game,
+        tokens: [],
+      });
+    }
+    groups.get(key).tokens.push(tokenItem);
+  }
+  const deletedGroup = groups.get("deleted");
+  groups.delete("deleted");
+  return deletedGroup ? [...groups.values(), deletedGroup] : [...groups.values()];
+});
+const canCollapseConnectionGroups = computed(() => connectionGroups.value.length >= 2);
+const collapsedConnectionGroups = ref(readCollapsedConnectionGroups(auth.userInfo?.id));
 useAccountListUpdates(next => {
   invalidateAccountLoad();
   accounts.value = next;
@@ -693,6 +753,18 @@ const accountLoadError = ref("");
 const loading = ref(false);
 const permissionsLoading = ref(false);
 const error = ref("");
+const maaTutorialGroupKey = computed(() => {
+  if (!maaGuideActive.value || loading.value || error.value) return "";
+  if (!["maa_copy", "maa_sync", "verified"].includes(onboarding.waitingFor)) return "";
+  const tokenId = onboarding.maaYuan.connectionId;
+  const group = connectionGroups.value.find(group => group.tokens.some(token => token.token_id === tokenId));
+  return group?.key || "";
+});
+const maaConnectionTutorialOutletId = computed(() => {
+  const key = maaTutorialGroupKey.value;
+  if (!key || isConnectionGroupCollapsed(key)) return "";
+  return `maayuan-tutorial-connection-${encodeURIComponent(key)}-${encodeURIComponent(onboarding.maaYuan.connectionId)}`;
+});
 const permissionError = ref("");
 const creatingMode = ref("");
 const updatingTokenId = ref("");
@@ -825,6 +897,11 @@ function scopeSummary(scopes) {
 }
 function supportsMaaYuan(tokenItem) {
   return hasEveryScope(tokenItem && tokenItem.scopes, MAAYUAN_REQUIRED_SCOPES);
+}
+function canUpgradeForMaaYuan(tokenItem) {
+  if (supportsMaaYuan(tokenItem)) return false;
+  const scopes = scopeKeys(tokenItem.scopes);
+  return ["inventory:write", "operator:scan:write", "star:sync:write"].some(scope => scopes.includes(scope));
 }
 function tokenLabel(tokenItem) {
   return tokenItem.remark || "自定义 API 连接";
@@ -1009,7 +1086,49 @@ async function openMaaYuanFromRoute() {
   if (route.query.connect === "maayuan") await revealMaaYuanConnect();
 }
 
-function showCreatedToken(created, kind) {
+function connectionGroupListId(key) {
+  return `profile-connection-group-${encodeURIComponent(key)}`;
+}
+
+function collapsedConnectionGroupsStorageKey(userId) {
+  return `yuanhub:profile:collapsed-connection-groups:${userId}`;
+}
+
+function readCollapsedConnectionGroups(userId) {
+  if (!userId) return new Set();
+  try {
+    const keys = JSON.parse(localStorage.getItem(collapsedConnectionGroupsStorageKey(userId)));
+    if (Array.isArray(keys)) return new Set(keys.filter(key => typeof key === "string"));
+  } catch {
+    // 存储不可用或内容损坏时默认展开。
+  }
+  return new Set();
+}
+
+function isConnectionGroupCollapsed(key) {
+  return canCollapseConnectionGroups.value && collapsedConnectionGroups.value.has(key);
+}
+
+function setConnectionGroupCollapsed(key, collapsed) {
+  const keys = collapsedConnectionGroups.value;
+  if (keys.has(key) === collapsed) return;
+  if (collapsed) keys.add(key);
+  else keys.delete(key);
+  const userId = auth.userInfo?.id;
+  if (!userId) return;
+  try {
+    localStorage.setItem(collapsedConnectionGroupsStorageKey(userId), JSON.stringify([...keys]));
+  } catch {
+    // 存储不可用时仍可在当前页面折叠。
+  }
+}
+
+function toggleConnectionGroup(key) {
+  if (canCollapseConnectionGroups.value) setConnectionGroupCollapsed(key, !isConnectionGroupCollapsed(key));
+}
+
+function showCreatedToken(created, kind, accountId) {
+  if (created?.token_id) setConnectionGroupCollapsed(`account:${accountId}`, false);
   newToken.value = created || null;
   newTokenKind.value = kind;
   tokenCopied.value = false;
@@ -1056,7 +1175,7 @@ async function createMaaYuanConnection() {
     });
     if (userId !== auth.userInfo?.id) return;
     if (!created?.token_id || typeof created.token !== 'string' || !created.token || (created.account_id && created.account_id !== targetAccountId)) throw new Error('连接码响应无效，请重新读取现有连接');
-    showCreatedToken(created, "maayuan");
+    showCreatedToken(created, "maayuan", targetAccountId);
     recordMaaYuanAction('created', { connectionId: created.token_id, accountId: targetAccountId });
     showMaaYuanConnect.value = false;
     addingConnection.value = false;
@@ -1097,7 +1216,7 @@ async function createAdvancedToken() {
       remark: customRemark.value || null,
     });
     if (userId !== auth.userInfo?.id) return;
-    showCreatedToken(created, "advanced");
+    showCreatedToken(created, "advanced", targetAccountId);
     addingConnection.value = false;
     await focusCreatedToken();
     if (userId !== auth.userInfo?.id) return;
@@ -1253,7 +1372,8 @@ watch(() => beta.canUseBetaFeatures, () => {
   if (!beta.canUseBetaFeatures) { showMaaYuanConnect.value = false; newToken.value = null; accountManagerView.value = ""; }
   void loadAccounts();
 });
-watch(() => auth.userInfo?.id, () => {
+watch(() => auth.userInfo?.id, userId => {
+  collapsedConnectionGroups.value = readCollapsedConnectionGroups(userId);
   accountLoadVersion++;
   accounts.value = [];
   accountManagerView.value = "";
@@ -1267,6 +1387,17 @@ watch(() => auth.userInfo?.id, () => {
 watch([accounts, () => activeAccount.id], function () {
   applyDefaultAccounts();
 });
+if (TUTORIALS_ENABLED) {
+  watch([maaTutorialGroupKey, () => onboarding.maaYuan.connectionId, () => onboarding.waitingFor, addingConnection], ([key]) => {
+    if (key) setConnectionGroupCollapsed(key, false);
+  }, { immediate: true });
+  watch([maaTutorialTarget, () => onboarding.waitingFor, addingConnection], async ([target, step]) => {
+    if (step !== "maa_copy" || !maaConnectionTutorialOutletId.value || target === "#maayuan-tutorial-copy") return;
+    await nextTick();
+    if (target !== maaTutorialTarget.value || onboarding.waitingFor !== step) return;
+    document.getElementById(maaConnectionTutorialOutletId.value)?.closest(".token-item")?.scrollIntoView({ block: "nearest" });
+  }, { flush: "post" });
+}
 watch(
   () => route.query.connect,
   function (value) {
@@ -1620,8 +1751,43 @@ onBeforeUnmount(function () {
 .connection-icon.maayuan {
   background: var(--yellow);
 }
-.connection-title-row h4 {
+.connection-group-heading,
+.connection-title-row h5 {
   color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.connection-group-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.connection-group-label-content {
+  flex: 1;
+  min-width: 0;
+}
+.connection-group-toggle {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.connection-group-toggle:hover {
+  color: var(--theme-accent-text, var(--accent-strong));
+}
+.connection-group-toggle:focus-visible {
+  outline: 2px solid var(--theme-focus, var(--accent));
+  outline-offset: 3px;
+}
+.connection-group-chevron {
+  flex: none;
+  color: var(--ink-60);
+}
+.connection-group-toggle[aria-expanded="false"] .connection-group-chevron {
+  transform: rotate(-90deg);
 }
 .status-tag {
   color: var(--ink-60);
@@ -1632,17 +1798,36 @@ onBeforeUnmount(function () {
   color: var(--theme-accent-text, var(--accent-strong));
   background: var(--theme-wash-strong, rgba(239, 210, 142, 0.58));
 }
-.connection-account {
+.connection-group-count {
   color: var(--ink-60);
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.connection-account b {
-  color: var(--ink);
+.status-tag.connection-game {
+  white-space: nowrap;
+}
+.status-tag.connection-game.is-daihao {
+  color: var(--tea);
+  background: color-mix(in srgb, var(--tea) 12%, transparent);
+}
+.status-tag.connection-game.is-ruyuan {
+  color: var(--slate-deep);
+  background: color-mix(in srgb, var(--slate) 14%, transparent);
 }
 .connection-scope {
   color: var(--ink-60);
 }
 .connection-created {
   color: var(--ink-60);
+}
+.connection-code-hint {
+  color: var(--ink-60);
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .t-btn {
   color: var(--ink-60);

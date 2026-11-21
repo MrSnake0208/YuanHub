@@ -146,16 +146,7 @@ class OpenApiTokenService(
         // 未校验 token 引用)。这类 token 无法解析账号名,但保留在列表里让用户仍可看到并删除,
         // 而不是让一条脏数据把整个用户的列表打成 500。
         val accountName = accountRepository.findByUserIdAndAccountId(userId, token.accountId)?.name ?: DELETED_ACCOUNT_NAME
-        OpenApiTokenListItemDto(
-            tokenId = checkNotNull(token.id) { "Token document has no id" },
-            accountId = token.accountId,
-            accountName = accountName,
-            remark = token.remark,
-            scopes = token.scope
-                .mapNotNull { code -> OpenApiPermission.entries.firstOrNull { permission -> permission.code == code } }
-                .map { permission -> permission.key },
-            createdAt = token.createTime,
-        )
+        token.toListItemDto(accountName)
     }
 
     fun accountIdForToken(userId: String, tokenId: String): String = tokenRepository.findByIdAndUserId(tokenId, userId)?.accountId
@@ -174,9 +165,13 @@ class OpenApiTokenService(
     fun secret(userId: String, tokenId: String): String {
         val entity = tokenRepository.findByIdAndUserId(tokenId, userId)
             ?: throw ApiResultException(HttpStatus.NOT_FOUND.value(), "token 不存在")
-        if (!entity.token.startsWith("sha256:")) return entity.token
-        val secret = cipher.decrypt(checkNotNull(entity.encryptedSecret), tokenId, userId)
-        check(OpenApiTokenCipher.digest(secret) == entity.token) { "Connection code digest mismatch" }
+        return entity.readSecret(tokenId, userId)
+    }
+
+    private fun OpenApiToken.readSecret(tokenId: String, ownerId: String): String {
+        if (!token.startsWith("sha256:")) return token
+        val secret = cipher.decrypt(checkNotNull(encryptedSecret), tokenId, ownerId)
+        check(OpenApiTokenCipher.digest(secret) == token) { "Connection code digest mismatch" }
         return secret
     }
 
@@ -200,16 +195,22 @@ class OpenApiTokenService(
         return permissions
     }
 
-    private fun OpenApiToken.toListItemDto(accountName: String) = OpenApiTokenListItemDto(
-        tokenId = checkNotNull(id) { "Token document has no id" },
-        accountId = accountId,
-        accountName = accountName,
-        remark = remark,
-        scopes = scope
-            .mapNotNull { code -> OpenApiPermission.entries.firstOrNull { permission -> permission.code == code } }
-            .map { permission -> permission.key },
-        createdAt = createTime,
-    )
+    private fun OpenApiToken.toListItemDto(accountName: String): OpenApiTokenListItemDto {
+        val tokenId = checkNotNull(id) { "Token document has no id" }
+        // 密文缺失或损坏时只省略这条连接的末四位。
+        val tokenHint = runCatching { readSecret(tokenId, userId).takeLast(4) }.getOrNull()
+        return OpenApiTokenListItemDto(
+            tokenId = tokenId,
+            accountId = accountId,
+            accountName = accountName,
+            remark = remark,
+            scopes = scope
+                .mapNotNull { code -> OpenApiPermission.entries.firstOrNull { permission -> permission.code == code } }
+                .map { permission -> permission.key },
+            createdAt = createTime,
+            tokenHint = tokenHint,
+        )
+    }
 
     companion object {
         private const val BEARER_PREFIX = "Bearer "
@@ -235,6 +236,7 @@ data class OpenApiTokenListItemDto(
     val remark: String?,
     val scopes: List<String>,
     val createdAt: Instant,
+    val tokenHint: String? = null,
 )
 
 data class OpenApiPrincipal(

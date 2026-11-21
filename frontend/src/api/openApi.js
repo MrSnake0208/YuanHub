@@ -12,8 +12,8 @@ export function getOpenApiPermissions() {
 }
 
 // 已生成的 Token 列表（需登录）
-// 返回 [{ token_id, account_id, account_name, remark, scopes, created_at }]
-// 列表不返回 token 明文；需要复制时按单条连接请求。
+// 返回 [{ token_id, account_id, account_name, remark, scopes, created_at, token_hint }]
+// token_hint 为连接码末 4 位，无法读取时为 null；复制完整连接码时按单条连接请求。
 export function getOpenApiTokens() {
   return request('/user/open-api/tokens', { auth: true })
 }

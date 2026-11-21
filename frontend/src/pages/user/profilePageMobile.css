@@ -91,6 +91,7 @@
   z-index: 1;
 }
 .app-title-row,
+.connection-group-label-content,
 .connection-title-row {
   display: flex;
   align-items: center;
@@ -510,8 +511,14 @@
 .empty-state .act-btn {
   margin-top: 6px;
 }
-.token-list {
+.connection-groups {
   margin-top: 15px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+}
+.token-list {
+  margin-top: 8px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -541,7 +548,15 @@
 .connection-main {
   min-width: 0;
 }
-.connection-title-row h4 {
+.connection-group-heading {
+  font-family: var(--font-s);
+  font-size: 18px;
+  font-weight: 900;
+}
+.connection-group-toggle {
+  min-height: 44px;
+}
+.connection-title-row h5 {
   font-family: var(--font-s);
   font-size: 16px;
   font-weight: 900;
@@ -553,10 +568,6 @@
   padding: 2px 8px;
   font-size: 10.5px;
   font-weight: 800;
-}
-.connection-account {
-  margin-top: 5px;
-  font-size: 12.5px;
 }
 .connection-scope {
   margin-top: 4px;
@@ -867,9 +878,8 @@
   .token-item { grid-template-columns: 36px minmax(0, 1fr); gap: 10px; padding: 14px 12px; border-radius: 14px; }
   .connection-icon { width: 36px; height: 36px; border-radius: 11px; }
   .connection-icon img { width: 32px; height: 32px; }
-  .connection-title-row { gap: 6px; }
-  .connection-title-row h4 { font-size: 17px; letter-spacing: 0; overflow-wrap: anywhere; }
-  .connection-account { font-size: 13px; overflow-wrap: anywhere; }
+  .connection-group-label-content, .connection-title-row { gap: 6px; }
+  .connection-title-row h5 { font-size: 17px; letter-spacing: 0; }
   .connection-scope-desktop { display: none; }
   .connection-permissions { display: block; margin-top: 5px; color: var(--ink-60); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
   .connection-permissions summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; cursor: pointer; list-style: none; }

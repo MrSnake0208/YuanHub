@@ -90,6 +90,7 @@
   z-index: 1;
 }
 .app-title-row,
+.connection-group-label-content,
 .connection-title-row {
   display: flex;
   align-items: center;
@@ -508,8 +509,14 @@
 .empty-state .act-btn {
   margin-top: 6px;
 }
-.token-list {
+.connection-groups {
   margin-top: 15px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+.token-list {
+  margin-top: 8px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -539,7 +546,12 @@
 .connection-main {
   min-width: 0;
 }
-.connection-title-row h4 {
+.connection-group-heading {
+  font-family: var(--font-s);
+  font-size: 18px;
+  font-weight: 900;
+}
+.connection-title-row h5 {
   font-family: var(--font-s);
   font-size: 16px;
   font-weight: 900;
@@ -551,10 +563,6 @@
   padding: 2px 8px;
   font-size: 10.5px;
   font-weight: 800;
-}
-.connection-account {
-  margin-top: 5px;
-  font-size: 12.5px;
 }
 .connection-scope {
   margin-top: 4px;
