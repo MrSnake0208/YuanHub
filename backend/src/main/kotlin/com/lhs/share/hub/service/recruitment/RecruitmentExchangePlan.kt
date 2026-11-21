@@ -174,6 +174,8 @@ internal fun recruitmentExchangePlan(
     if (events.size > RECRUITMENT_EXCHANGE_MAX_EVENTS || batches.size > RECRUITMENT_EXCHANGE_MAX_EVENTS) {
         throw recruitmentInvalid("合并后超过20000条记录上限，整包不能导入")
     }
+    val mixedCounts = if (recordsOnly) mixedRecordImportCounts(backup, items) else emptyList()
+    risks += mixedCounts
     if (restoring) nextOrder = (events.values.maxOfOrNull { it.sortOrder } ?: 0) + 1
     val next = current.copy(
         baseline = if (useState) backup.baseline else current.baseline,
@@ -223,8 +225,26 @@ internal fun recruitmentExchangePlan(
             original,
         ),
         exchangeTotal(backup), exchangeTotal(candidate),
-        !needsStateConfirmation || options.confirmCountChange,
+        options.confirmCountChange || (!needsStateConfirmation && mixedCounts.isEmpty()),
     )
+}
+
+private fun mixedRecordImportCounts(document: RecruitmentExchangeDocument, items: List<RecruitmentImportItem>): List<String> {
+    // Include additions held for confirmation, so the first preview explains the full proposed increase.
+    val pending = items.filter { it.status == "add" || it.status == "count_overlap" }
+    val batchIds = pending.filter { it.entityType == "batch" }.mapTo(mutableSetOf()) { it.id }
+    val batchPulls = document.batches.filter { it.batchId in batchIds }.groupBy { it.poolId }
+        .mapValues { (_, batches) -> batches.sumOf { it.totalPullCount } }
+    if (batchPulls.isEmpty()) return emptyList()
+    val eventIds = pending.filter { it.entityType == "event" }.mapTo(mutableSetOf()) { it.id }
+    return document.events.filter { it.eventId in eventIds && it.poolId in batchPulls && it.batchId == null && it.pullSpan != null }
+        .groupBy { it.poolId }.map { (poolId, records) ->
+            val batch = batchPulls.getValue(poolId)
+            val standalone = records.sumOf { it.pullSpan ?: 0 }
+            val poolName = records.first().poolSnapshot.name
+            "「$poolName」若分别计数，将增加 ${batch + standalone} 抽（批次 $batch 抽 + 独立记录 $standalone 抽）。" +
+                "若是同一段抽卡，请在文件中给组内记录填写 batch_id 或移除重复批次；若是两段，请核对后确认。"
+        }
 }
 
 internal fun exchangeTotal(document: RecruitmentExchangeDocument): Long = document.baseline +

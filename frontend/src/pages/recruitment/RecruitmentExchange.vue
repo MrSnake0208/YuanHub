@@ -18,8 +18,8 @@
               <ul v-if="preview.risks.length" class="risks"><li v-for="risk in preview.risks" :key="risk">{{ risk }}</li></ul>
               <p v-if="!preview.can_commit" class="error" role="alert">请先处理需要确认的内容。</p>
             </div>
-            <div v-if="documentData && (options.confirm_count_change || preview?.items.some(item => item.status === 'count_overlap') || (!recordsOnly && options.state_strategy === 'use_backup' && preview?.items.some(item => item.entity_type === 'state' && item.status === 'add')))" class="backup-import-warning">
-              <p>{{ !recordsOnly && options.state_strategy === 'use_backup' ? '备份进度将替换现有进度，同时替换心愿密探，请核对抽数与选择变化。' : '部分记录可能已计入现有抽数，请先核对下方明细。' }}</p>
+            <div v-if="documentData && (options.confirm_count_change || (recordsOnly && preview?.can_commit === false) || preview?.items.some(item => item.status === 'count_overlap') || (!recordsOnly && options.state_strategy === 'use_backup' && preview?.items.some(item => item.entity_type === 'state' && item.status === 'add')))" class="backup-import-warning">
+              <p>{{ !recordsOnly && options.state_strategy === 'use_backup' ? '备份进度将替换现有进度，同时替换心愿密探，请核对抽数与选择变化。' : '请核对上方抽数和下方明细，确认每一段抽卡只计一次。' }}</p>
               <label class="check"><input v-model="options.confirm_count_change" type="checkbox" :disabled="!canImport || loading || committing || !!submittedIntent">{{ !recordsOnly && options.state_strategy === 'use_backup' ? '我已核对，确认使用备份进度、心愿及本次抽数变化' : '我已核对，确认这些记录不会重复计数' }}</label>
             </div>
             <BackupImportDetails v-if="preview">

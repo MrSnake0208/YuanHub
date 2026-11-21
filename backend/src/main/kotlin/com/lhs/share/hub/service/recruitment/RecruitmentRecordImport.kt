@@ -53,6 +53,9 @@ internal class RecruitmentRecordImport(private val mapper: ObjectMapper, private
                 } else {
                     operators.getOrPut(event.agentId) { catalog.operator(input.game, event.agentId) }
                 }
+                if (agent.rarity == 5 && event.pullSpan != null && event.pullSpan !in 1L..40L) {
+                    throw recruitmentInvalid("${pool.snapshot.name} · ${agent.name}的出货间隔为 ${event.pullSpan} 抽，请填写 1–40 抽，未知填 null")
+                }
                 RecruitmentExchangeEvent(
                     event.eventId, pool.poolId, pool.snapshot, agent, event.pullSpan, index + 1L, event.upStatus,
                     event.acquiredDate, event.note, "external", event.batchId, Instant.EPOCH, Instant.EPOCH,

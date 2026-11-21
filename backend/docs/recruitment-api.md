@@ -226,9 +226,9 @@ preview 与 commit 均重新检查隐藏状态。隐藏池备份只允许目标�
 {"schema":"yuanhub.recruitment.import.v1","game":"如鸢","events":[{"event_id":"550e8400-e29b-41d4-a716-446655440000","catalog_pool_id":"xlsx-1e717a2211d8b823e02bb46f","agent_id":"char_099_pangxi","pull_span":37}]}
 ```
 
-示例为虚构出货。记录 UUID 必须小写且稳定，重复导入/修订保留，不使用 `evt_1` 流水号。使用公共卡池 ID，不添加 `catalog:`；密探使用图鉴 ID 或所属卡池的管理员 UP 槽 ID。系统查目录生成快照/稀有度，保留官方角色ID，不自动推断UP。数组顺序代表先后。`up_status` 可选，默认 `unknown`；`acquired_date`、`note`、`batch_id` 可选。5星间隔为正整数或null；4星只计次，间隔必须null。
+示例为虚构出货。记录 UUID 必须小写且稳定，重复导入/修订保留，不使用 `evt_1` 流水号。使用公共卡池 ID，不添加 `catalog:`；密探使用图鉴 ID 或所属卡池的管理员 UP 槽 ID。系统查目录生成快照/稀有度，保留官方角色ID，不自动推断UP。数组顺序代表先后。`up_status` 可选，默认 `unknown`；`acquired_date`、`note`、`batch_id` 可选。5星间隔为 1–40 抽或 null；4星只计次，间隔必须null。
 
-可选 `batches`：每条 `{batch_id,catalog_pool_id,total_pull_count}`，batch_id同样为稳定小写UUID。关联事件填写batch_id，必须同池，其已知间隔之和不得超过批次总抽数；累计仅计批次总量一次。events必填，可空但不能和batches同时为空。最多5MiB、各20000条事件/批次、500个公共池；超过或非法整包拒绝。
+可选 `batches`：每条 `{batch_id,catalog_pool_id,total_pull_count}`，batch_id同样为稳定小写UUID。关联事件填写batch_id，必须同池，其已知间隔之和不得超过批次总抽数；累计仅计批次总量一次。同一文件在同池同时新增批次和有已知间隔的独立出货时，预览列出两项抽数与合计。若属同一段，修正文件后重新预览；若属两段，勾选计数确认后重新预览才能提交。events必填，可空但不能和batches同时为空。最多5MiB、各20000条事件/批次、500个公共池；超过或非法整包拒绝。
 
 普通文件不接受 `source_account`、`exported_at`、`archive_revision`、`baseline`、`pools`、快照、排序号、时间戳等备份字段。同目录有多份个人池时拒绝歧义，使用完整备份明确归属。前后端继续绑定当前账号/原文件/选项/版本；提交重新解析目录，解析结果变化要求重新预览。写入时生成时间，重复导入仍按事件身份判重，不按名字/日期合并。
 
