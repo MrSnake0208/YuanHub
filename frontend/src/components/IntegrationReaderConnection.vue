@@ -1,32 +1,43 @@
 <template>
   <details class="reader-connection" @toggle="onToggle">
-    <summary>{{ feedback ? '反馈 AI 只读接入' : 'MaaYuan 诊断 AI 接入' }}</summary>
-    <p>{{ description }} 使用 yuanhub-feedback MCP 时，把令牌填入 <code>{{ configKey }}</code>。</p>
-    <div class="actions">
-      <button type="button" :disabled="busy || !loaded || !!created" @click="createToken">创建只读令牌</button>
-      <button type="button" @click="copyInstructions">复制接入说明</button>
+    <summary>
+      <span class="summary-text">
+        <b>{{ feedback ? '反馈 AI 只读接入' : 'MaaYuan 诊断 AI 接入' }}</b>
+        <small>{{ description }}</small>
+      </span>
+      <ChevronDown class="chevron" :size="18" aria-hidden="true" />
+    </summary>
+    <div class="reader-content">
+      <p>使用 yuanhub-feedback MCP 时，把令牌填入 <code>{{ configKey }}</code>。</p>
+      <div class="actions">
+        <button type="button" :disabled="busy || !loaded || !!created" @click="createToken">创建只读令牌</button>
+        <button type="button" @click="copyInstructions">复制接入说明</button>
+      </div>
+      <textarea v-if="showInstructions" aria-label="AI 接入说明" readonly :value="instructions" rows="6" />
+      <div v-if="created">
+        <label>仅此次显示的令牌<input ref="secretInput" readonly autocomplete="off" spellcheck="false" :value="created.token" @focus="$event.target.select()" /></label>
+        <div class="actions">
+          <button type="button" @click="copyToken">复制令牌</button>
+          <button type="button" @click="created = null">我已保存</button>
+        </div>
+      </div>
+      <p v-if="message" role="status">{{ message }}</p>
+      <p v-if="error" role="alert">{{ error }}</p>
+      <p v-if="!loaded && !busy"><button type="button" @click="loadTokens">重新加载令牌</button></p>
+      <p v-else-if="!loaded" role="status">正在加载令牌…</p>
+      <ul v-if="tokens.length">
+        <li v-for="token in tokens" :key="token.token_id">
+          <span>{{ token.name }} · {{ new Date(token.created_at).toLocaleString() }} · 编号 {{ token.token_id.slice(-6) }}</span>
+          <button class="revoke" type="button" :disabled="busy" @click="revokeToken(token)">撤销</button>
+        </li>
+      </ul>
+      <p v-else-if="loaded">暂无有效的{{ label }}只读令牌。</p>
     </div>
-    <textarea v-if="showInstructions" aria-label="AI 接入说明" readonly :value="instructions" rows="6" />
-    <div v-if="created">
-      <label>仅此次显示的令牌<input ref="secretInput" readonly autocomplete="off" spellcheck="false" :value="created.token" @focus="$event.target.select()" /></label>
-      <button type="button" @click="copyToken">复制令牌</button>
-      <button type="button" @click="created = null">我已保存</button>
-    </div>
-    <p v-if="message" role="status">{{ message }}</p>
-    <p v-if="error" role="alert">{{ error }}</p>
-    <p v-if="!loaded && !busy"><button type="button" @click="loadTokens">重新加载令牌</button></p>
-    <p v-else-if="!loaded" role="status">正在加载令牌…</p>
-    <ul v-if="tokens.length">
-      <li v-for="token in tokens" :key="token.token_id">
-        <span>{{ token.name }} · {{ new Date(token.created_at).toLocaleString() }} · 尾号 {{ token.token_id.slice(-6) }}</span>
-        <button type="button" :disabled="busy" @click="revokeToken(token)">撤销</button>
-      </li>
-    </ul>
-    <p v-else-if="loaded">暂无有效的{{ label }}只读令牌。</p>
   </details>
 </template>
 
 <script setup>
+import { ChevronDown } from '@lucide/vue'
 import { ref } from 'vue'
 import { API_BASE, request } from '../api/request.js'
 import { dialog } from '../utils/dialog.js'
@@ -139,14 +150,117 @@ async function copyInstructions() {
 </script>
 
 <style scoped>
-.reader-connection { margin-block: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
-summary, button { cursor: pointer; }
-summary { font-weight: 700; }
-p, ul, label { margin-block: .75rem; }
-.actions, li { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
-ul { padding: 0; list-style: none; }
-li + li { margin-top: .5rem; }
-button { font: inherit; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .45rem .8rem; }
-button:disabled { opacity: .6; cursor: default; }
-input, textarea { display: block; width: 100%; margin-block: .5rem; box-sizing: border-box; font: inherit; }
+.reader-connection {
+  min-width: 0;
+  margin-block: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 68px;
+  padding: 13px 16px;
+  border-radius: inherit;
+  cursor: pointer;
+  list-style: none;
+}
+summary::-webkit-details-marker { display: none; }
+summary:focus-visible {
+  outline: 2px solid var(--theme-focus, var(--accent));
+  outline-offset: 2px;
+}
+.summary-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+summary b { color: var(--ink); font-size: 13.5px; }
+summary small { color: var(--ink-60); font-size: 11.5px; line-height: 1.5; }
+.chevron {
+  flex: none;
+  color: var(--ink-35);
+  transition: transform 0.25s var(--ease);
+}
+.reader-connection[open] .chevron { transform: rotate(180deg); }
+.reader-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 16px 16px;
+  border-top: 1px dashed var(--line);
+  color: var(--ink-60);
+  font-size: 12px;
+  line-height: 1.6;
+}
+[role="alert"] { color: var(--theme-danger-text, var(--rouge)); }
+code, input { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code {
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.9em;
+}
+.actions, li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+ul { list-style: none; }
+li { padding-block: 4px; border-top: 1px solid var(--line); }
+li > span { flex: 1; min-width: 0; }
+button {
+  min-height: 36px;
+  max-width: 100%;
+  padding: 8px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 800 12px/1.4 var(--font-b);
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-strong);
+}
+button.revoke {
+  border-color: transparent;
+  background: transparent;
+  color: var(--theme-danger-text, var(--rouge));
+}
+button.revoke:hover:not(:disabled) { border-color: var(--rouge); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+label { display: block; color: var(--ink); font-size: 13px; font-weight: 800; }
+input, textarea {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 13px;
+  border: 1.5px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 400;
+}
+input { margin-block: 7px 8px; }
+textarea { font-family: var(--font-b); resize: vertical; }
+@media (max-width: 767px) {
+  summary { padding: 12px; }
+  .reader-content { padding-inline: 12px; }
+}
+@media (max-width: 767px), (hover: none), (pointer: coarse) {
+  button { min-width: 44px; min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chevron { transition: none; }
+}
 </style>
