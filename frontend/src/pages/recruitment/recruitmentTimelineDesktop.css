@@ -22,6 +22,8 @@
   }
   .banner-summary:not(.has-many-up) .pool-up-item{flex:none;white-space:nowrap}
   .banner-summary:not(.has-many-up) :is(.pool-up-name,.pool-up-count){overflow:hidden;text-overflow:ellipsis}
+  .banner-summary:not(.has-many-up) .pool-up-name{min-width:3em}
+  .banner-summary:not(.has-many-up) .pool-up-count{min-width:calc(2ch + .65em)}
   .banner-summary:not(.has-many-up) > :is(.banner-metrics,.pool-empty){order:2}
   .banner-summary:not(.has-many-up) .banner-metrics{
     flex:1 0 min-content;min-width:0;width:auto;max-width:680px;
