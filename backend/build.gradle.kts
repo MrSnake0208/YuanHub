@@ -137,8 +137,12 @@ tasks.withType<Test>().configureEach {
     environment = environment.filterKeys { key ->
         !key.startsWith("SPRING_") && !key.startsWith("SHARE_") && !key.startsWith("YUANHUB_BETA_") &&
             key !in setOf(
-                "PLANNER_TEST_MONGO_URI", "BETA_TEST_MONGO_URI", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS",
-                "YUANHUB_OPENAPI_STORAGE_KEY", "YUANHUB_RELEASE_METADATA_TOKEN",
+                "PLANNER_TEST_MONGO_URI",
+                "BETA_TEST_MONGO_URI",
+                "JAVA_TOOL_OPTIONS",
+                "JDK_JAVA_OPTIONS",
+                "YUANHUB_OPENAPI_STORAGE_KEY",
+                "YUANHUB_RELEASE_METADATA_TOKEN",
             )
     }
     maxParallelForks = 1
