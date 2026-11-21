@@ -69,6 +69,12 @@ export function operatorPinyinTokens(entry) {
     .filter(Boolean))]
 }
 
+function matchesOperatorPinyin(entry, query) {
+  const latinQuery = compactLatin(query)
+  if (!latinQuery || !/^[a-z]/.test(latinQuery)) return false
+  return operatorPinyinTokens(entry).some(token => token.includes(latinQuery) || isOrderedAbbreviation(latinQuery, token))
+}
+
 export function matchesOperatorSearch(entry, rawQuery) {
   const query = String(rawQuery || '').trim().toLowerCase()
   if (!query) return true
@@ -80,9 +86,14 @@ export function matchesOperatorSearch(entry, rawQuery) {
     .toLowerCase()
   if (directText.includes(query)) return true
 
-  const latinQuery = compactLatin(query)
-  if (!latinQuery || !/^[a-z]/.test(latinQuery)) return false
-  return operatorPinyinTokens(entry).some(token => token.includes(latinQuery) || isOrderedAbbreviation(latinQuery, token))
+  return matchesOperatorPinyin(entry, query)
+}
+
+export function matchesOperatorNameSearch(entry, rawQuery) {
+  const query = String(rawQuery || '').trim().toLowerCase()
+  if (!query) return true
+  return [entry?.name, entry?.alias].some(value => String(value || '').toLowerCase().includes(query)) ||
+    matchesOperatorPinyin(entry, query)
 }
 
 // starLevel=0 是协议中的“未拥有”。等级、修为可能由 SP 本体同步，不能作为拥有依据。

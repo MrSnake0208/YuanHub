@@ -3,10 +3,16 @@
     <div class="timeline-heading">
       <div><h2 :id="timelineId">卡池时间线</h2></div>
     </div>
-    <div v-if="years.length" class="year-filters" aria-label="卡池年份">
-      <button type="button" :aria-pressed="year === ''" @click="year = ''">全部</button>
-      <button v-for="item in years" :key="item" type="button" :aria-pressed="year === item" @click="year = item">{{ item }}</button>
-      <button v-if="hasUndated" type="button" :aria-pressed="year === 'unknown'" @click="year = 'unknown'">日期未知</button>
+    <div class="timeline-filters">
+      <div class="pool-search" @keydown.esc="onSearchEscape">
+        <input ref="searchInput" v-model="searchText" type="text" role="searchbox" aria-label="按 UP 密探搜索卡池" placeholder="搜索密探" />
+        <button v-if="searchText" type="button" aria-label="清空搜索" @click="clearSearch"><X :size="16" aria-hidden="true" /></button>
+      </div>
+      <div v-if="years.length" class="year-filters" role="group" aria-label="卡池年份">
+        <button type="button" :aria-pressed="year === ''" :disabled="!!searchKeyword" @click="year = ''">全部</button>
+        <button v-for="item in years" :key="item" type="button" :aria-pressed="year === item" :disabled="!!searchKeyword" @click="year = item">{{ item }}</button>
+        <button v-if="hasUndated" type="button" :aria-pressed="year === 'unknown'" :disabled="!!searchKeyword" @click="year = 'unknown'">日期未知</button>
+      </div>
     </div>
     <div class="overview-tools touch-targets" aria-label="卡池明细显示">
       <div v-if="pools.some(hasRecords)" class="overview-views" role="group" aria-label="主页面明细视图">
@@ -14,11 +20,20 @@
         <button type="button" aria-label="密探视图" :aria-pressed="recordView === 'agents'" @click="recordView = 'agents'">密探</button>
       </div>
       <button type="button" class="sort-button" :aria-label="descending ? '按时间排序，当前最新优先，点击切换最早优先' : '按时间排序，当前最早优先，点击切换最新优先'" @click="descending = !descending">按时间<ArrowDownWideNarrow v-if="descending" :size="16" aria-hidden="true" /><ArrowUpWideNarrow v-else :size="16" aria-hidden="true" /></button>
-      <button v-if="pools.some(hasRecords)" type="button" class="batch-toggle" :disabled="!visiblePools.some(hasRecords)" :aria-label="allExpanded ? '折叠当前年份全部明细' : '展开当前年份全部明细'" @click="setAllExpanded(!allExpanded)">{{ allExpanded ? '折叠' : '展开' }}<Minimize2 v-if="allExpanded" :size="15" aria-hidden="true" /><Maximize2 v-else :size="15" aria-hidden="true" /></button>
+      <button v-if="pools.some(hasRecords)" type="button" class="batch-toggle" :disabled="!visiblePools.some(hasRecords)" :aria-label="`${allExpanded ? '折叠' : '展开'}${searchKeyword ? '搜索结果' : '当前年份'}全部明细`" @click="setAllExpanded(!allExpanded)">{{ allExpanded ? '折叠' : '展开' }}<Minimize2 v-if="allExpanded" :size="15" aria-hidden="true" /><Maximize2 v-else :size="15" aria-hidden="true" /></button>
     </div>
     <RecruitmentGuideHint v-if="TUTORIALS_ENABLED && guideActive" :target="visiblePools.length ? 'pool-cards' : 'pool-unavailable'" :message="pools.length ? (visiblePools.length ? '先看池名、UP 密探和日期，再点卡片打开你抽过的池子。' : '这一年没有卡池，换个年份或点「全部」。') : '当前暂无可用卡池，可以退出或先练习。'" ><button v-if="!visiblePools.length" type="button" @click="$emit('practice')">先练习一下</button></RecruitmentGuideHint>
-    <p v-if="!pools.length" data-guide-target="pool-unavailable" class="timeline-empty">当前游戏暂无可用卡池。</p>
-    <p v-else-if="!visiblePools.length" data-guide-target="pool-unavailable" class="timeline-empty">此年份暂无卡池。</p>
+    <div class="search-feedback" :class="{ 'is-active': searchKeyword }" :data-guide-target="searchKeyword && !visiblePools.length ? 'pool-unavailable' : undefined">
+      <span aria-live="polite">
+        <template v-if="searchKeyword && visiblePools.length">找到 {{ visiblePools.length }} 个含「{{ searchKeyword }}」的卡池</template>
+        <template v-else-if="searchKeyword">没有含「{{ searchKeyword }}」的卡池</template>
+      </span>
+      <button v-if="searchKeyword && !visiblePools.length" type="button" @click="clearSearch">清空搜索</button>
+    </div>
+    <template v-if="!searchKeyword">
+      <p v-if="!pools.length" data-guide-target="pool-unavailable" class="timeline-empty">当前游戏暂无可用卡池。</p>
+      <p v-else-if="!visiblePools.length" data-guide-target="pool-unavailable" class="timeline-empty">此年份暂无卡池。</p>
+    </template>
     <ol class="timeline-list" data-guide-target="pool-cards">
       <li v-for="(pool, index) in visiblePools" :key="pool.pool_id" class="timeline-row">
         <div class="date-rail" aria-hidden="true"><span v-if="permanent(pool) || !startDate(pool) || !visiblePools[index - 1] || permanent(visiblePools[index - 1]) || startDate(visiblePools[index - 1]).slice(0, 7) !== startDate(pool).slice(0, 7)">{{ permanent(pool) ? '常驻' : startDate(pool) ? startDate(pool).slice(0, 4) + '年' + Number(startDate(pool).slice(5, 7)) + '月' : '日期' }}</span><strong>{{ permanent(pool) ? '∞' : startDate(pool) ? Number(startDate(pool).slice(8, 10)) + '日' : '未知' }}</strong></div>
@@ -77,7 +92,7 @@
 <script setup>
 import { TUTORIALS_ENABLED } from '../../config/features.js'
 import { computed, ref, useId, watch } from 'vue'
-import { ArrowUpWideNarrow, Minimize2, Maximize2, ArrowDownWideNarrow } from '@lucide/vue'
+import { ArrowUpWideNarrow, Minimize2, Maximize2, ArrowDownWideNarrow, X } from '@lucide/vue'
 import RecruitmentRecordsPreview from './RecruitmentRecordsPreview.vue'
 import RecruitmentGuideHint from './RecruitmentGuideHint.vue'
 import OperatorAvatar from '../../components/operator/OperatorAvatar.vue'
@@ -85,12 +100,24 @@ import { dateInZone } from '../../utils/businessDay.js'
 import { recruitmentPoolCatalog } from './rules.js'
 import { calendarDayDistance } from '../../data/activityCalendar.js'
 import { isPermanentRecruitmentPool, normalizeRecruitmentPoolType, recruitmentPoolDateLabel, recruitmentPoolType } from '../../data/recruitmentPoolTypes.js'
+import { matchesOperatorNameSearch } from '../../utils/operatorFilters.js'
 import { resolveOperatorPortrait } from '../../utils/operatorPortrait.js'
 
 const timelineId = 'recruitment-timeline-' + useId()
 const props = defineProps({ pools: { type: Array, default: () => [] }, catalog: { type: Array, default: () => [] }, agents: { type: Array, default: () => [] }, poolSummaries: { type: Object, default: () => ({}) }, previews: { type: Object, default: () => ({}) }, busy: Boolean, contextVersion: Number, guideActive: Boolean })
 defineEmits(['select', 'practice', 'load-preview'])
 const year = ref(''), descending = ref(true)
+const searchText = ref(''), searchInput = ref(null)
+const searchKeyword = computed(() => searchText.value.trim())
+function clearSearch() {
+  searchText.value = ''
+  searchInput.value.focus()
+}
+function onSearchEscape(event) {
+  if (!searchText.value) return
+  event.stopPropagation()
+  clearSearch()
+}
 const recordView = ref('agents'), expandedPools = ref(new Set())
 const hasRecords = pool => (props.poolSummaries[pool.pool_id]?.event_count || 0) > 0
 const isExpanded = pool => expandedPools.value.has(pool.pool_id)
@@ -116,7 +143,15 @@ watch([years, hasUndated], ([availableYears, undated]) => {
   if (year.value && (year.value === 'unknown' ? !undated : !availableYears.includes(year.value))) year.value = ''
 })
 const poolPriority = pool => permanent(pool) ? 0 : status(pool) === '进行中' ? 1 : 2
-const visiblePools = computed(() => props.pools.filter(pool => permanent(pool) || !year.value || (year.value === 'unknown' ? !startDate(pool) : startDate(pool).startsWith(year.value))).slice().sort((a, b) => {
+const visiblePools = computed(() => props.pools.filter(pool => {
+  if (searchKeyword.value) {
+    return !permanent(pool) && activeUpSlots(pool).some(slot => {
+      const agent = upSlotAgent(slot)
+      return agent ? matchesOperatorNameSearch(agent, searchKeyword.value) : (slot.name || '').toLowerCase().includes(searchKeyword.value.toLowerCase())
+    })
+  }
+  return permanent(pool) || !year.value || (year.value === 'unknown' ? !startDate(pool) : startDate(pool).startsWith(year.value))
+}).sort((a, b) => {
   const pinned = poolPriority(a) - poolPriority(b)
   if (pinned) return pinned
   const first = startDate(a), second = startDate(b)
@@ -155,7 +190,7 @@ function statusLabel(pool) {
 }
 const avatarResults = computed(() => new Map(props.pools.map(pool => [pool.pool_id,
   activeUpSlots(pool).map(slot => {
-    const agent = props.agents.find(item => item.id === slot.operator_id)
+    const agent = upSlotAgent(slot)
     const count = props.poolSummaries[pool.pool_id]?.up_agent_counts?.[slot.id]
     return { id: slot.id, name: agent?.name || slot.name || '未知密探', rarity: Number(agent?.rarity) || 5,
       portrait: resolveOperatorPortrait(slot.operator_id, agent),
@@ -189,6 +224,7 @@ function cardLabel(pool) {
   return label + '；本池 UP 获得次数：' + agents.map(agent => agent.name + (agent.count == null ? '，统计未知' : '，获得 ' + agent.count + ' 次')).join('；')
 }
 const activeUpSlots = pool => (details(pool).up_agents || []).filter(slot => slot.active !== false)
+const upSlotAgent = slot => props.agents.find(agent => agent.id === slot.operator_id)
 const coverPortraits = pool => coverAgents(pool)
   .map(agent => ({ id: agent.id, src: agent.portrait }))
   .filter(portrait => portrait.src && !failedPortraits.value.has(portrait.src))
@@ -197,7 +233,7 @@ function markPortraitFailed(src) { if (src) failedPortraits.value.add(src) }
 const cards = new Map()
 function rememberCard(id, element) { if (element) cards.set(id, element); else cards.delete(id) }
 defineExpose({ focusPool: id => cards.get(id)?.focus({ preventScroll: true }) })
-watch(() => props.contextVersion, () => { year.value = ''; descending.value = true; expandedPools.value = new Set() })
+watch(() => props.contextVersion, () => { year.value = ''; searchText.value = ''; descending.value = true; expandedPools.value = new Set() })
 </script>
 
 <style scoped>
@@ -325,6 +361,16 @@ watch(() => props.contextVersion, () => { year.value = ''; descending.value = tr
 /* 刻意共享字段外观与动效；布局和密度由独立双端文件持有。 */
 .timeline-heading p{color:var(--ink-60)}button{color:var(--ink);cursor:pointer}button:focus-visible{outline:2px solid var(--theme-focus, var(--accent));outline-offset:4px}button:disabled{opacity:.6;cursor:not-allowed}.sort-button{border:1px solid var(--line);background:var(--surface);border-radius:999px}.year-filters{border:1px solid var(--line);border-radius:20px;background:var(--cream)}.year-filters button{border:0;background:transparent;border-radius:999px}.year-filters button[aria-pressed=true]{background:var(--tea);color:var(--on-strong)}.timeline-row::before{content:'';border-left:1px solid var(--line)}.date-rail::before{content:'';border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--paper)}.pool-group{min-width:0;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
 .pool-empty{font-size:13px;color:var(--ink-60)}.pool-metrics>span{color:var(--ink-60)}.pool-metrics b{color:var(--ink)}.timeline-empty{color:var(--ink-60)}
+.year-filters button:disabled{background:transparent;color:var(--ink-60);border-bottom-color:transparent}
+.pool-search{display:flex;align-items:center;min-width:0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.pool-search:focus-within{outline:2px solid var(--theme-focus, var(--accent));outline-offset:2px}
+.pool-search input{flex:1;min-width:0;width:100%;min-height:44px;padding:0 12px;border:0;border-radius:inherit;background:transparent;color:var(--ink);font:inherit;font-size:14px}
+.pool-search input:focus{outline:none}
+.pool-search input::placeholder{color:var(--ink-60)}
+.pool-search button{display:grid;flex:0 0 44px;place-items:center;padding:0;border:0;border-radius:inherit;background:transparent}
+.search-feedback{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;color:var(--ink-60);font-size:13px;overflow-wrap:anywhere}
+.search-feedback.is-active{margin-bottom:12px}
+.search-feedback button{padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 @media(prefers-reduced-motion:reduce){.pool-card{transition:none}}
 </style>
 <style scoped src="./recruitmentTimelineDesktop.css"></style>
